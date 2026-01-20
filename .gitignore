@@ -1,0 +1,116 @@
+# Laravel & PHP
+/.phpactor.json
+/.phpunit.cache
+/.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+phpunit.xml
+
+# Environment Files
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+
+# Dependencies
+/vendor
+/node_modules
+
+# Build Assets
+/public/build
+/public/hot
+/public/storage
+/public/.htaccess
+
+# Storage
+/storage/*.key
+/storage/*.log
+/storage/pail
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/.gitkeep
+!/storage/app/.gitkeep
+!/storage/app/public/.gitkeep
+!/storage/framework/.gitkeep
+!/storage/framework/cache/.gitkeep
+!/storage/framework/cache/data/.gitkeep
+!/storage/framework/sessions/.gitkeep
+!/storage/framework/testing/.gitkeep
+!/storage/framework/views/.gitkeep
+!/storage/logs/.gitkeep
+
+# Bootstrap Cache
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+
+# IDE & Editors
+/.idea
+/.vscode
+/.fleet
+/.zed
+/.nova
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.buildpath
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing
+/.phpunit.result.cache
+/coverage
+/.nyc_output
+
+# Temporary Files
+*.tmp
+*.temp
+*.cache
+*.bak
+*.backup
+*.old
+*.orig
+
+# Package Manager Lock Files (optional - uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# composer.lock
+
+# SSL Certificates (if any)
+*.pem
+*.key
+*.crt
+*.csr
+
+# Database
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Compiled Assets
+/public/mix-manifest.json
+/public/js/
+/public/css/# Optional: Ignore uploaded files (if storing user uploads in storage)
+# /storage/app/public/uploads/*

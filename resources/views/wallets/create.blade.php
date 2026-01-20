@@ -1,0 +1,69 @@
+@extends('layouts.app')
+
+@section('title', 'Add Income Source')
+
+@php
+    $accountContext = app(\App\Services\AccountContext::class);
+    $account = $accountContext->account();
+    $currencyCode = $account?->currency_code ?? 'IQD';
+@endphp
+
+@section('content')
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0">Add Income Source</h4>
+        </div>
+        <p class="text-muted mb-4">Create a new income source to track where your money comes from (e.g., freelance, payroll, investments).</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ route('wallets.store') }}" method="POST">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label">Income Source Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" placeholder="e.g., Freelance, Payroll, Investment" required>
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Enter the name of your income source</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type <span class="text-danger">*</span></label>
+                        <select name="type" class="form-select @error('type') is-invalid @enderror" required>
+                            <option value="">Select type...</option>
+                            <option value="freelance">Freelance</option>
+                            <option value="payroll">Payroll</option>
+                            <option value="investment">Investment</option>
+                            <option value="business">Business</option>
+                            <option value="rental">Rental</option>
+                            <option value="other">Other</option>
+                        </select>
+                        @error('type')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Opening Balance ({{ $currencyCode }})</label>
+                        <input type="number" name="opening_balance" class="form-control @error('opening_balance') is-invalid @enderror" step="0.01" value="0" required>
+                        @error('opening_balance')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Starting balance for this income source</small>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save" class="align-middle me-1"></i> Create Income Source
+                        </button>
+                        <a href="{{ route('wallets.index') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

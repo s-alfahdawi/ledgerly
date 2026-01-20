@@ -1,0 +1,67 @@
+@extends('layouts.app')
+
+@section('title', 'Edit Income Source')
+
+@php
+    $accountContext = app(\App\Services\AccountContext::class);
+    $account = $accountContext->account();
+    $currencyCode = $account?->currency_code ?? 'IQD';
+@endphp
+
+@section('content')
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0">Edit Income Source</h4>
+        </div>
+        <p class="text-muted mb-4">Update your income source details.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ route('wallets.update', $wallet) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="mb-3">
+                        <label class="form-label">Income Source Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $wallet->name) }}" required>
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type <span class="text-danger">*</span></label>
+                        <select name="type" class="form-select @error('type') is-invalid @enderror" required>
+                            <option value="freelance" {{ old('type', $wallet->type) === 'freelance' ? 'selected' : '' }}>Freelance</option>
+                            <option value="payroll" {{ old('type', $wallet->type) === 'payroll' ? 'selected' : '' }}>Payroll</option>
+                            <option value="investment" {{ old('type', $wallet->type) === 'investment' ? 'selected' : '' }}>Investment</option>
+                            <option value="business" {{ old('type', $wallet->type) === 'business' ? 'selected' : '' }}>Business</option>
+                            <option value="rental" {{ old('type', $wallet->type) === 'rental' ? 'selected' : '' }}>Rental</option>
+                            <option value="other" {{ old('type', $wallet->type) === 'other' ? 'selected' : '' }}>Other</option>
+                        </select>
+                        @error('type')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Opening Balance ({{ $currencyCode }})</label>
+                        <input type="number" name="opening_balance" class="form-control @error('opening_balance') is-invalid @enderror" step="0.01" value="{{ old('opening_balance', $wallet->opening_balance) }}" required>
+                        @error('opening_balance')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save" class="align-middle me-1"></i> Update Income Source
+                        </button>
+                        <a href="{{ route('wallets.index') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
