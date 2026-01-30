@@ -15,6 +15,22 @@ use Illuminate\Support\Facades\Route;
 // PWA: Web App Manifest (same-origin, no auth)
 Route::get('/manifest.webmanifest', function () {
     $baseUrl = rtrim(config('app.url', url('/')), '/');
+    $icons = [
+        ['src' => $baseUrl . '/assets/minia/images/favicon.ico', 'sizes' => '48x48', 'type' => 'image/x-icon', 'purpose' => 'any'],
+        ['src' => $baseUrl . '/assets/minia/images/logo-sm.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any maskable'],
+    ];
+    // Chrome needs 192x192 and 512x512 for "Add to Home Screen" – use PNGs in public/icons/ if present
+    if (file_exists(public_path('icons/icon-192.png'))) {
+        $icons[] = ['src' => $baseUrl . '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'];
+    } else {
+        $icons[] = ['src' => $baseUrl . '/assets/minia/images/favicon.ico', 'sizes' => '192x192', 'type' => 'image/x-icon', 'purpose' => 'any'];
+    }
+    if (file_exists(public_path('icons/icon-512.png'))) {
+        $icons[] = ['src' => $baseUrl . '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'];
+    } else {
+        $icons[] = ['src' => $baseUrl . '/assets/minia/images/favicon.ico', 'sizes' => '512x512', 'type' => 'image/x-icon', 'purpose' => 'any maskable'];
+    }
+
     return response()->json([
         'name' => config('app.name', 'Ledgerly'),
         'short_name' => 'Ledgerly',
@@ -25,20 +41,7 @@ Route::get('/manifest.webmanifest', function () {
         'background_color' => '#ffffff',
         'theme_color' => '#405189',
         'orientation' => 'portrait-primary',
-        'icons' => [
-            [
-                'src' => $baseUrl . '/assets/minia/images/favicon.ico',
-                'sizes' => '48x48',
-                'type' => 'image/x-icon',
-                'purpose' => 'any',
-            ],
-            [
-                'src' => $baseUrl . '/assets/minia/images/logo-sm.svg',
-                'sizes' => 'any',
-                'type' => 'image/svg+xml',
-                'purpose' => 'any maskable',
-            ],
-        ],
+        'icons' => $icons,
     ], 200, [
         'Content-Type' => 'application/manifest+json',
         'Cache-Control' => 'public, max-age=3600',
