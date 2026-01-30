@@ -14,25 +14,26 @@ use Illuminate\Support\Facades\Route;
 
 // PWA: Web App Manifest (same-origin, no auth)
 Route::get('/manifest.webmanifest', function () {
+    $baseUrl = rtrim(config('app.url', url('/')), '/');
     return response()->json([
         'name' => config('app.name', 'Ledgerly'),
         'short_name' => 'Ledgerly',
         'description' => 'Smart personal finance management. Track income, expenses, and collaborate with your team.',
-        'start_url' => url('/'),
-        'scope' => url('/'),
+        'start_url' => $baseUrl . '/',
+        'scope' => $baseUrl . '/',
         'display' => 'standalone',
         'background_color' => '#ffffff',
         'theme_color' => '#405189',
         'orientation' => 'portrait-primary',
         'icons' => [
             [
-                'src' => asset('assets/minia/images/favicon.ico'),
+                'src' => $baseUrl . '/assets/minia/images/favicon.ico',
                 'sizes' => '48x48',
                 'type' => 'image/x-icon',
                 'purpose' => 'any',
             ],
             [
-                'src' => asset('assets/minia/images/logo-sm.svg'),
+                'src' => $baseUrl . '/assets/minia/images/logo-sm.svg',
                 'sizes' => 'any',
                 'type' => 'image/svg+xml',
                 'purpose' => 'any maskable',
@@ -40,6 +41,7 @@ Route::get('/manifest.webmanifest', function () {
         ],
     ], 200, [
         'Content-Type' => 'application/manifest+json',
+        'Cache-Control' => 'public, max-age=3600',
     ]);
 })->name('manifest');
 
