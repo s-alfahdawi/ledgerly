@@ -56,7 +56,7 @@
                 <td>{{ $transaction->occurred_at->format('M d, Y') }}</td>
                 <td>{{ ucfirst($transaction->type) }}</td>
                 <td>{{ number_format($transaction->amount, 2) }}</td>
-                <td>{{ $transaction->wallet->name }}</td>
+                <td>{{ $transaction->wallet?->name ?? '—' }}</td>
                 <td>{{ $transaction->category->name ?? 'N/A' }}</td>
             </tr>
         @endforeach

@@ -36,9 +36,10 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Income Source <span class="text-danger">*</span></label>
-                        <select name="wallet_id" class="form-select @error('wallet_id') is-invalid @enderror" required>
+                    <div class="mb-3" id="wallet_field">
+                        <label class="form-label">Income Source <span id="wallet_required" class="text-danger">*</span></label>
+                        <select name="wallet_id" id="wallet_id" class="form-select @error('wallet_id') is-invalid @enderror">
+                            <option value="" {{ old('wallet_id', $transaction->wallet_id) === '' || old('wallet_id', $transaction->wallet_id) === null ? 'selected' : '' }}>Select Income Source...</option>
                             @foreach($wallets as $wallet)
                                 <option value="{{ $wallet->id }}" {{ old('wallet_id', $transaction->wallet_id) == $wallet->id ? 'selected' : '' }}>{{ $wallet->name }}</option>
                             @endforeach
@@ -48,8 +49,8 @@
                         @enderror
                     </div>
                     <div class="mb-3" id="category_field">
-                        <label class="form-label">Expense Type</label>
-                        <select name="category_id" class="form-select @error('category_id') is-invalid @enderror">
+                        <label class="form-label">Expense Type <span id="category_required" class="text-danger" style="display: none;">*</span></label>
+                        <select name="category_id" id="category_id" class="form-select @error('category_id') is-invalid @enderror">
                             <option value="">None</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ old('category_id', $transaction->category_id) == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
@@ -91,4 +92,33 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const typeSelect = document.getElementById('transaction_type');
+    const walletInput = document.getElementById('wallet_id');
+    const categoryInput = document.getElementById('category_id');
+    const walletRequired = document.getElementById('wallet_required');
+    const categoryRequired = document.getElementById('category_required');
+    const categoryField = document.getElementById('category_field');
+
+    function updateRequired() {
+        const type = typeSelect.value;
+        if (type === 'transfer' || type === 'income') {
+            walletRequired.style.display = 'inline';
+            categoryRequired.style.display = 'none';
+            walletInput.required = true;
+            categoryInput.required = false;
+        } else {
+            walletRequired.style.display = 'none';
+            categoryRequired.style.display = 'inline';
+            walletInput.required = false;
+            categoryInput.required = true;
+        }
+    }
+
+    typeSelect.addEventListener('change', updateRequired);
+    updateRequired();
+})();
+</script>
 @endsection
