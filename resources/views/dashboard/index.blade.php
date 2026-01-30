@@ -24,7 +24,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Income</span>
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Income (This Month)</span>
                         <h4 class="mb-0 text-success">{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</h4>
                     </div>
                     <div class="flex-shrink-0 align-self-center">
@@ -39,7 +39,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Expense</span>
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Expense (This Month)</span>
                         <h4 class="mb-0 text-danger">{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</h4>
                     </div>
                     <div class="flex-shrink-0 align-self-center">
@@ -54,13 +54,31 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Net Balance</span>
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Net (This Month)</span>
                         <h4 class="mb-0 {{ $summary['net'] >= 0 ? 'text-primary' : 'text-danger' }}">
-                            {{ number_format($summary['net'], 2) }} {{ $currencyCode }}
+                            {{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}
                         </h4>
                     </div>
                     <div class="flex-shrink-0 align-self-center">
                         <i data-feather="dollar-sign" class="icon-lg text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Balance</span>
+                        <h4 class="mb-0 {{ ($totalBalance ?? 0) >= 0 ? 'text-info' : 'text-danger' }}">
+                            {{ \App\Helpers\CurrencyHelper::format($totalBalance ?? 0, $currencyCode) }}
+                        </h4>
+                        <small class="text-muted">Opening + all transactions</small>
+                    </div>
+                    <div class="flex-shrink-0 align-self-center">
+                        <i data-feather="wallet" class="icon-lg text-info"></i>
                     </div>
                 </div>
             </div>

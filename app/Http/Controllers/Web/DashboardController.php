@@ -81,7 +81,8 @@ class DashboardController extends Controller
         );
 
         $walletBalances = $this->reportService->getWalletBalances($accountId);
-        
+        $totalBalance = array_sum(array_column($walletBalances, 'balance'));
+
         // Get last 12 months data for charts
         $last12Months = [];
         for ($i = 11; $i >= 0; $i--) {
@@ -104,6 +105,7 @@ class DashboardController extends Controller
             'summary' => $summary,
             'topCategories' => $topCategories,
             'walletBalances' => $walletBalances,
+            'totalBalance' => $totalBalance,
             'monthlyData' => $last12Months,
             'account' => $account,
         ]);
