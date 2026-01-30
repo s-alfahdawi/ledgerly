@@ -7,9 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="Personal Billing and Accounting Application" name="description" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#405189">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
+    <!-- PWA manifest -->
+    <link rel="manifest" href="{{ url('/manifest.webmanifest') }}">
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ asset('assets/minia/images/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/minia/images/favicon.ico') }}">
 
     <!-- preloader css -->
     <link rel="stylesheet" href="{{ asset('assets/minia/css/preloader.min.css') }}" type="text/css" />
@@ -75,6 +81,17 @@
     <!-- Initialize Feather Icons -->
     <script>
         feather.replace();
+    </script>
+
+    <!-- PWA: Register service worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('{{ url("/sw.js") }}', { scope: '/' })
+                    .then(function (reg) { /* optional: reg.update(); */ })
+                    .catch(function () {});
+            });
+        }
     </script>
     
     @stack('scripts')

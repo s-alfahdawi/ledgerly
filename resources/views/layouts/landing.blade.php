@@ -8,9 +8,15 @@
     <title>@yield('title', 'Ledgerly - Smart Personal Finance Management')</title>
     <meta name="description" content="Ledgerly: Modern personal finance management app. Track income, expenses, manage income sources, visualize spending with charts, and collaborate with your team. Free and open-source." />
     <meta name="keywords" content="ledgerly, personal finance, expense tracking, income management, financial dashboard, budgeting, accounting, finance app" />
-    
+    <meta name="theme-color" content="#405189">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="{{ url('/manifest.webmanifest') }}">
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ asset('assets/invoza/images/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/invoza/images/favicon.ico') }}">
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="{{ asset('assets/invoza/css/bootstrap.min.css') }}" type="text/css">
@@ -42,6 +48,14 @@
 
     <!-- app js -->
     <script src="{{ asset('assets/invoza/js/app.js') }}"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('{{ url("/sw.js") }}', { scope: '/' }).catch(function () {});
+            });
+        }
+    </script>
 
     @stack('scripts')
 
