@@ -36,12 +36,10 @@
                         <label class="form-label">Type <span class="text-danger">*</span></label>
                         <select name="type" class="form-select @error('type') is-invalid @enderror" required>
                             <option value="">Select type...</option>
-                            <option value="freelance">Freelance</option>
-                            <option value="payroll">Payroll</option>
-                            <option value="investment">Investment</option>
-                            <option value="business">Business</option>
-                            <option value="rental">Rental</option>
-                            <option value="other">Other</option>
+                            <option value="cash" {{ old('type') === 'cash' ? 'selected' : '' }}>Cash</option>
+                            <option value="bank" {{ old('type') === 'bank' ? 'selected' : '' }}>Bank</option>
+                            <option value="card" {{ old('type') === 'card' ? 'selected' : '' }}>Card</option>
+                            <option value="other" {{ old('type') === 'other' ? 'selected' : '' }}>Other</option>
                         </select>
                         @error('type')
                             <div class="invalid-feedback">{{ $message }}</div>

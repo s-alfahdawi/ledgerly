@@ -35,11 +35,9 @@
                     <div class="mb-3">
                         <label class="form-label">Type <span class="text-danger">*</span></label>
                         <select name="type" class="form-select @error('type') is-invalid @enderror" required>
-                            <option value="freelance" {{ old('type', $wallet->type) === 'freelance' ? 'selected' : '' }}>Freelance</option>
-                            <option value="payroll" {{ old('type', $wallet->type) === 'payroll' ? 'selected' : '' }}>Payroll</option>
-                            <option value="investment" {{ old('type', $wallet->type) === 'investment' ? 'selected' : '' }}>Investment</option>
-                            <option value="business" {{ old('type', $wallet->type) === 'business' ? 'selected' : '' }}>Business</option>
-                            <option value="rental" {{ old('type', $wallet->type) === 'rental' ? 'selected' : '' }}>Rental</option>
+                            <option value="cash" {{ old('type', $wallet->type) === 'cash' ? 'selected' : '' }}>Cash</option>
+                            <option value="bank" {{ old('type', $wallet->type) === 'bank' ? 'selected' : '' }}>Bank</option>
+                            <option value="card" {{ old('type', $wallet->type) === 'card' ? 'selected' : '' }}>Card</option>
                             <option value="other" {{ old('type', $wallet->type) === 'other' ? 'selected' : '' }}>Other</option>
                         </select>
                         @error('type')
