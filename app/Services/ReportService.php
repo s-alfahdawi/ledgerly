@@ -110,6 +110,48 @@ class ReportService
             ->toArray();
     }
 
+    /**
+     * Get all-time income, expense, and current cash totals.
+     */
+    public function getAllTimeSummary(int $accountId): array
+    {
+        $income = Transaction::forAccount($accountId)
+            ->byType('income')
+            ->sum('amount');
+
+        $expense = Transaction::forAccount($accountId)
+            ->byType('expense')
+            ->sum('amount');
+
+        return [
+            'income' => (float) $income,
+            'expense' => (float) $expense,
+            'current_cash' => (float) $income - (float) $expense,
+        ];
+    }
+
+    /**
+     * Get all categories of a given type with their total transaction amounts.
+     */
+    public function getCategoryTotals(int $accountId, string $type): array
+    {
+        return Transaction::forAccount($accountId)
+            ->byType($type)
+            ->select('category_id', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as transaction_count'))
+            ->groupBy('category_id')
+            ->orderByDesc('total')
+            ->with('category')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'category' => $item->category?->name ?? 'Uncategorized',
+                    'total' => (float) $item->total,
+                    'transaction_count' => (int) $item->transaction_count,
+                ];
+            })
+            ->toArray();
+    }
+
     public function getWalletBalances(int $accountId): array
     {
         $wallets = Wallet::forAccount($accountId)->active()->get();

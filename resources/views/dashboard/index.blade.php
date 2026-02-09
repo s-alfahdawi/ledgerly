@@ -14,86 +14,133 @@
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
             <h4 class="mb-sm-0">Dashboard</h4>
         </div>
-        <p class="text-muted mb-4">Overview of your financial activity this month. Track your income, expenses, and balances at a glance.</p>
+        <p class="text-muted mb-4">Overview of your financial activity. Track your income, expenses, and balances at a glance.</p>
     </div>
 </div>
 
+{{-- All-Time Summary Cards --}}
+<h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="globe" class="icon-xs me-1"></i> All-Time Summary</h6>
 <div class="row">
-    <div class="col-xl-3 col-md-6">
-        <div class="card">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-success border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-success-subtle text-success rounded-circle font-size-18">
+                                <i data-feather="trending-up"></i>
+                            </span>
+                        </div>
+                    </div>
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Income (This Month)</span>
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Income</span>
+                        <h4 class="mb-0 text-success">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['income'], $currencyCode) }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-danger border-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-danger-subtle text-danger rounded-circle font-size-18">
+                                <i data-feather="trending-down"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Expense</span>
+                        <h4 class="mb-0 text-danger">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['expense'], $currencyCode) }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-primary border-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-primary-subtle text-primary rounded-circle font-size-18">
+                                <i data-feather="dollar-sign"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Current Cash</span>
+                        <h4 class="mb-0 {{ $allTimeSummary['current_cash'] >= 0 ? 'text-primary' : 'text-danger' }}">
+                            {{ \App\Helpers\CurrencyHelper::format($allTimeSummary['current_cash'], $currencyCode) }}
+                        </h4>
+                        <small class="text-muted">Income - Expense</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Current Month Summary Cards --}}
+<h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="calendar" class="icon-xs me-1"></i> This Month ({{ now($account->timezone ?? 'UTC')->format('F Y') }})</h6>
+<div class="row">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-success border-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-success-subtle text-success rounded-circle font-size-18">
+                                <i data-feather="arrow-up-circle"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Income</span>
                         <h4 class="mb-0 text-success">{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</h4>
                     </div>
-                    <div class="flex-shrink-0 align-self-center">
-                        <i data-feather="trending-up" class="icon-lg text-success"></i>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-danger border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-danger-subtle text-danger rounded-circle font-size-18">
+                                <i data-feather="arrow-down-circle"></i>
+                            </span>
+                        </div>
+                    </div>
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Expense (This Month)</span>
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Expense</span>
                         <h4 class="mb-0 text-danger">{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</h4>
                     </div>
-                    <div class="flex-shrink-0 align-self-center">
-                        <i data-feather="trending-down" class="icon-lg text-danger"></i>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card">
+    <div class="col-xl-4 col-md-6">
+        <div class="card border-start border-info border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <span class="avatar-title bg-info-subtle text-info rounded-circle font-size-18">
+                                <i data-feather="activity"></i>
+                            </span>
+                        </div>
+                    </div>
                     <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Net (This Month)</span>
-                        <h4 class="mb-0 {{ $summary['net'] >= 0 ? 'text-primary' : 'text-danger' }}">
+                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Net</span>
+                        <h4 class="mb-0 {{ $summary['net'] >= 0 ? 'text-info' : 'text-danger' }}">
                             {{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}
                         </h4>
-                    </div>
-                    <div class="flex-shrink-0 align-self-center">
-                        <i data-feather="dollar-sign" class="icon-lg text-primary"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Balance</span>
-                        <h4 class="mb-0 {{ ($totalBalance ?? 0) >= 0 ? 'text-info' : 'text-danger' }}">
-                            {{ \App\Helpers\CurrencyHelper::format($totalBalance ?? 0, $currencyCode) }}
-                        </h4>
-                        <small class="text-muted">Opening + all transactions</small>
-                    </div>
-                    <div class="flex-shrink-0 align-self-center">
-                        <i data-feather="wallet" class="icon-lg text-info"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Income Sources</span>
-                        <h4 class="mb-0 text-info">{{ count($walletBalances ?? []) }}</h4>
-                    </div>
-                    <div class="flex-shrink-0 align-self-center">
-                        <i data-feather="trending-up" class="icon-lg text-info"></i>
+                        <small class="text-muted">Income - Expense</small>
                     </div>
                 </div>
             </div>
@@ -101,34 +148,53 @@
     </div>
 </div>
 
+{{-- Income & Expense Category Totals Tables --}}
 <div class="row">
     <div class="col-xl-6">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title mb-4">Top Expense Types (This Month)</h4>
-                @if(!empty($topCategories) && count($topCategories) > 0)
+                <h4 class="card-title mb-4">
+                    <i data-feather="arrow-up-circle" class="icon-xs text-success me-1"></i>
+                    Income by Category
+                </h4>
+                @if(!empty($incomeCategoryTotals) && count($incomeCategoryTotals) > 0)
                     <div class="table-responsive">
-                        <table class="table table-nowrap mb-0">
-                            <thead>
+                        <table class="table table-hover table-nowrap align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Expense Type</th>
-                                    <th class="text-end">Amount</th>
+                                    <th>#</th>
+                                    <th>Category</th>
+                                    <th class="text-center">Transactions</th>
+                                    <th class="text-end">Total Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($topCategories as $category)
+                                @foreach($incomeCategoryTotals as $index => $cat)
                                     <tr>
-                                        <td>{{ $category['category'] }}</td>
+                                        <td class="text-muted">{{ $index + 1 }}</td>
+                                        <td>
+                                            <span class="fw-medium">{{ $cat['category'] }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success-subtle text-success">{{ $cat['transaction_count'] }}</span>
+                                        </td>
                                         <td class="text-end">
-                                            <strong>{{ \App\Helpers\CurrencyHelper::format($category['total'], $currencyCode) }}</strong>
+                                            <strong class="text-success">{{ \App\Helpers\CurrencyHelper::format($cat['total'], $currencyCode) }}</strong>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="2"><strong>Total</strong></td>
+                                    <td class="text-center"><strong>{{ array_sum(array_column($incomeCategoryTotals, 'transaction_count')) }}</strong></td>
+                                    <td class="text-end"><strong class="text-success">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($incomeCategoryTotals, 'total')), $currencyCode) }}</strong></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 @else
-                    <p class="text-muted mb-0">No expenses recorded this month</p>
+                    <p class="text-muted mb-0">No income transactions recorded yet.</p>
                 @endif
             </div>
         </div>
@@ -136,42 +202,48 @@
     <div class="col-xl-6">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title mb-4">Income Source Balances</h4>
-                @if(!empty($walletBalances) && count($walletBalances) > 0)
+                <h4 class="card-title mb-4">
+                    <i data-feather="arrow-down-circle" class="icon-xs text-danger me-1"></i>
+                    Expense by Category
+                </h4>
+                @if(!empty($expenseCategoryTotals) && count($expenseCategoryTotals) > 0)
                     <div class="table-responsive">
-                        <table class="table table-nowrap mb-0">
-                            <thead>
+                        <table class="table table-hover table-nowrap align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Income Source</th>
-                                    <th class="text-end">Balance</th>
+                                    <th>#</th>
+                                    <th>Category</th>
+                                    <th class="text-center">Transactions</th>
+                                    <th class="text-end">Total Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($walletBalances as $wallet)
+                                @foreach($expenseCategoryTotals as $index => $cat)
                                     <tr>
-                                        <td>{{ $wallet['wallet'] }}</td>
+                                        <td class="text-muted">{{ $index + 1 }}</td>
+                                        <td>
+                                            <span class="fw-medium">{{ $cat['category'] }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-danger-subtle text-danger">{{ $cat['transaction_count'] }}</span>
+                                        </td>
                                         <td class="text-end">
-                                            <strong class="{{ $wallet['balance'] >= 0 ? 'text-success' : 'text-danger' }}">
-                                                {{ \App\Helpers\CurrencyHelper::format($wallet['balance'], $currencyCode) }}
-                                            </strong>
+                                            <strong class="text-danger">{{ \App\Helpers\CurrencyHelper::format($cat['total'], $currencyCode) }}</strong>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="2"><strong>Total</strong></td>
+                                    <td class="text-center"><strong>{{ array_sum(array_column($expenseCategoryTotals, 'transaction_count')) }}</strong></td>
+                                    <td class="text-end"><strong class="text-danger">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($expenseCategoryTotals, 'total')), $currencyCode) }}</strong></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 @else
-                    <p class="text-muted mb-0">
-                        No income sources created yet.
-                        @php
-                            $accountContext = app(\App\Services\AccountContext::class);
-                            $accountId = $accountContext->id();
-                            $user = auth()->user();
-                        @endphp
-                        @if($accountId && $user->hasPermissionInAccount($accountId, 'wallets.create'))
-                            <a href="{{ route('wallets.create') }}">Create one</a>
-                        @endif
-                    </p>
+                    <p class="text-muted mb-0">No expense transactions recorded yet.</p>
                 @endif
             </div>
         </div>

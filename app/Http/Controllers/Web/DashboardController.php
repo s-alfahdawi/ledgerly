@@ -65,12 +65,16 @@ class DashboardController extends Controller
         $timezone = $account->timezone ?? 'UTC';
         $now = now($timezone);
 
+        // Current month summary
         $summary = $this->reportService->getMonthlySummary(
             $accountId,
             $now->month,
             $now->year,
             $timezone
         );
+
+        // All-time summary
+        $allTimeSummary = $this->reportService->getAllTimeSummary($accountId);
 
         $topCategories = $this->reportService->getTopCategories(
             $accountId,
@@ -82,6 +86,10 @@ class DashboardController extends Controller
 
         $walletBalances = $this->reportService->getWalletBalances($accountId);
         $totalBalance = array_sum(array_column($walletBalances, 'balance'));
+
+        // Category totals (all-time) for income and expense
+        $incomeCategoryTotals = $this->reportService->getCategoryTotals($accountId, 'income');
+        $expenseCategoryTotals = $this->reportService->getCategoryTotals($accountId, 'expense');
 
         // Get last 12 months data for charts
         $last12Months = [];
@@ -103,11 +111,14 @@ class DashboardController extends Controller
 
         return view('dashboard.index', [
             'summary' => $summary,
+            'allTimeSummary' => $allTimeSummary,
             'topCategories' => $topCategories,
             'walletBalances' => $walletBalances,
             'totalBalance' => $totalBalance,
             'monthlyData' => $last12Months,
             'account' => $account,
+            'incomeCategoryTotals' => $incomeCategoryTotals,
+            'expenseCategoryTotals' => $expenseCategoryTotals,
         ]);
     }
 }
