@@ -152,6 +152,28 @@ class ReportService
             ->toArray();
     }
 
+    /**
+     * Get all wallets with their total income transaction amounts.
+     */
+    public function getWalletIncomeTotals(int $accountId): array
+    {
+        return Transaction::forAccount($accountId)
+            ->byType('income')
+            ->select('wallet_id', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as transaction_count'))
+            ->groupBy('wallet_id')
+            ->orderByDesc('total')
+            ->with('wallet')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'wallet' => $item->wallet?->name ?? 'Unknown Source',
+                    'total' => (float) $item->total,
+                    'transaction_count' => (int) $item->transaction_count,
+                ];
+            })
+            ->toArray();
+    }
+
     public function getWalletBalances(int $accountId): array
     {
         $wallets = Wallet::forAccount($accountId)->active()->get();

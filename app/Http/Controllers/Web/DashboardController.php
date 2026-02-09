@@ -79,16 +79,16 @@ class DashboardController extends Controller
         $topCategories = $this->reportService->getTopCategories(
             $accountId,
             5,
-            $now->startOfMonth()->toDateString(),
-            $now->endOfMonth()->toDateString(),
+            $now->copy()->startOfMonth()->toDateString(),
+            $now->copy()->endOfMonth()->toDateString(),
             $timezone
         );
 
         $walletBalances = $this->reportService->getWalletBalances($accountId);
         $totalBalance = array_sum(array_column($walletBalances, 'balance'));
 
-        // Category totals (all-time) for income and expense
-        $incomeCategoryTotals = $this->reportService->getCategoryTotals($accountId, 'income');
+        // Income totals by wallet (source), expense totals by category (type)
+        $incomeWalletTotals = $this->reportService->getWalletIncomeTotals($accountId);
         $expenseCategoryTotals = $this->reportService->getCategoryTotals($accountId, 'expense');
 
         // Get last 12 months data for charts
@@ -117,7 +117,7 @@ class DashboardController extends Controller
             'totalBalance' => $totalBalance,
             'monthlyData' => $last12Months,
             'account' => $account,
-            'incomeCategoryTotals' => $incomeCategoryTotals,
+            'incomeWalletTotals' => $incomeWalletTotals,
             'expenseCategoryTotals' => $expenseCategoryTotals,
         ]);
     }

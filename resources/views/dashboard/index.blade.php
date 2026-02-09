@@ -155,31 +155,31 @@
             <div class="card-body">
                 <h4 class="card-title mb-4">
                     <i data-feather="arrow-up-circle" class="icon-xs text-success me-1"></i>
-                    Income by Category
+                    Income by Source
                 </h4>
-                @if(!empty($incomeCategoryTotals) && count($incomeCategoryTotals) > 0)
+                @if(!empty($incomeWalletTotals) && count($incomeWalletTotals) > 0)
                     <div class="table-responsive">
                         <table class="table table-hover table-nowrap align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>Category</th>
+                                    <th>Source</th>
                                     <th class="text-center">Transactions</th>
                                     <th class="text-end">Total Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($incomeCategoryTotals as $index => $cat)
+                                @foreach($incomeWalletTotals as $index => $wallet)
                                     <tr>
                                         <td class="text-muted">{{ $index + 1 }}</td>
                                         <td>
-                                            <span class="fw-medium">{{ $cat['category'] }}</span>
+                                            <span class="fw-medium">{{ $wallet['wallet'] }}</span>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge bg-success-subtle text-success">{{ $cat['transaction_count'] }}</span>
+                                            <span class="badge bg-success-subtle text-success">{{ $wallet['transaction_count'] }}</span>
                                         </td>
                                         <td class="text-end">
-                                            <strong class="text-success">{{ \App\Helpers\CurrencyHelper::format($cat['total'], $currencyCode) }}</strong>
+                                            <strong class="text-success">{{ \App\Helpers\CurrencyHelper::format($wallet['total'], $currencyCode) }}</strong>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -187,8 +187,8 @@
                             <tfoot class="table-light">
                                 <tr>
                                     <td colspan="2"><strong>Total</strong></td>
-                                    <td class="text-center"><strong>{{ array_sum(array_column($incomeCategoryTotals, 'transaction_count')) }}</strong></td>
-                                    <td class="text-end"><strong class="text-success">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($incomeCategoryTotals, 'total')), $currencyCode) }}</strong></td>
+                                    <td class="text-center"><strong>{{ array_sum(array_column($incomeWalletTotals, 'transaction_count')) }}</strong></td>
+                                    <td class="text-end"><strong class="text-success">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($incomeWalletTotals, 'total')), $currencyCode) }}</strong></td>
                                 </tr>
                             </tfoot>
                         </table>

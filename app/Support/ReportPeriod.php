@@ -53,18 +53,20 @@ class ReportPeriod
 
     /**
      * Get start date as formatted string for database queries.
+     * Converts to UTC since the database stores datetimes in UTC.
      */
     public function startDateString(): string
     {
-        return $this->startDate->format('Y-m-d H:i:s');
+        return $this->startDate->copy()->utc()->format('Y-m-d H:i:s');
     }
 
     /**
      * Get end date as formatted string for database queries.
+     * Converts to UTC since the database stores datetimes in UTC.
      */
     public function endDateString(): string
     {
-        return $this->endDate->format('Y-m-d H:i:s');
+        return $this->endDate->copy()->utc()->format('Y-m-d H:i:s');
     }
 
     /**
