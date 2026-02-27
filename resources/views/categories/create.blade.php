@@ -3,9 +3,13 @@
 @section('title', 'Add Expense Type')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item"><a href="{{ route('categories.index') }}">Expense Types</a></li>
+    <li class="breadcrumb-item active">Add Expense Type</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -21,7 +25,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('categories.store') }}" method="POST">
+                <form action="{{ route('categories.store') }}" method="POST" class="needs-validation" novalidate>
                     @csrf
                     <div class="mb-3">
                         <label class="form-label">Expense Type Name <span class="text-danger">*</span></label>

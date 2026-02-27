@@ -3,9 +3,12 @@
 @section('title', 'Settings')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item active">Settings</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -24,7 +27,7 @@
                 <h4 class="card-title mb-0">Workspace Settings</h4>
             </div>
             <div class="card-body">
-                <form action="{{ route('settings.update') }}" method="POST">
+                <form action="{{ route('settings.update') }}" method="POST" class="needs-validation" novalidate>
                     @csrf
                     @method('PUT')
                     <div class="mb-3">
@@ -36,7 +39,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Currency <span class="text-danger">*</span></label>
-                        <select name="currency_code" class="form-select @error('currency_code') is-invalid @enderror" required>
+                        <select name="currency_code" class="form-select searchable-select @error('currency_code') is-invalid @enderror" required>
                             <option value="IQD" {{ $account->currency_code === 'IQD' ? 'selected' : '' }}>Iraqi Dinar (IQD)</option>
                             <option value="USD" {{ $account->currency_code === 'USD' ? 'selected' : '' }}>US Dollar (USD)</option>
                         </select>

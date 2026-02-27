@@ -3,9 +3,12 @@
 @section('title', 'Members')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item active">Members</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -91,13 +94,12 @@
                                         </td>
                                         <td class="text-end">
                                             @if($member->pivot->role !== 'owner')
-                                                <form action="{{ route('members.destroy', $member) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to remove this member?')">
-                                                        <i data-feather="user-x" class="icon-xs"></i> Remove
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-danger"
+                                                    data-bs-toggle="modal" data-bs-target="#confirmModal"
+                                                    data-action="{{ route('members.destroy', $member) }}"
+                                                    data-message="Are you sure you want to remove this member?">
+                                                    <i data-feather="user-x" class="icon-xs"></i> Remove
+                                                </button>
                                             @else
                                                 <span class="text-muted small">Owner</span>
                                             @endif
@@ -114,4 +116,6 @@
         </div>
     </div>
 </div>
+
+<x-confirm-modal />
 @endsection

@@ -2,31 +2,45 @@
 
 namespace App\Providers;
 
+use App\Enums\Currency;
 use App\Models\User;
 use App\Policies\MemberPolicy;
+use App\Services\AccountContext;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Members page authorizes against User::class; use MemberPolicy for member management.
         Gate::policy(User::class, MemberPolicy::class);
-
-        // Use Bootstrap 5 pagination views (Laravel defaults to Tailwind).
         Paginator::useBootstrapFive();
+
+        // Share AccountContext data with all views — resolved once per request
+        View::composer('*', function ($view) {
+            static $resolved = false;
+            static $account = null;
+            static $accountId = null;
+            static $currencyCode = null;
+
+            if (!$resolved && auth()->check()) {
+                $ctx = app(AccountContext::class);
+                $account = $ctx->account();
+                $accountId = $ctx->id();
+                $currencyCode = $account?->currency_code ?? Currency::IQD->value;
+                $resolved = true;
+            }
+
+            $view->with('__account', $account);
+            $view->with('__accountId', $accountId);
+            $view->with('__currencyCode', $currencyCode ?? Currency::IQD->value);
+        });
     }
 }

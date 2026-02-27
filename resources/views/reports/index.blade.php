@@ -3,10 +3,13 @@
 @section('title', 'Reports')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item active">Reports</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -25,6 +28,28 @@
                 <h4 class="card-title mb-0">Report Filters</h4>
             </div>
             <div class="card-body">
+                {{-- Quick date presets --}}
+                @php
+                    $tz = $account->timezone ?? 'UTC';
+                    $today = now($tz);
+                    $presets = [
+                        'This Month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
+                        'Last Month' => [$today->copy()->subMonth()->startOfMonth()->toDateString(), $today->copy()->subMonth()->endOfMonth()->toDateString()],
+                        'This Quarter' => [$today->copy()->firstOfQuarter()->toDateString(), $today->copy()->lastOfQuarter()->toDateString()],
+                        'This Year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
+                        'Last 30 Days' => [$today->copy()->subDays(30)->toDateString(), $today->toDateString()],
+                        'Last 90 Days' => [$today->copy()->subDays(90)->toDateString(), $today->toDateString()],
+                    ];
+                @endphp
+                <div class="mb-3">
+                    <label class="form-label d-block">Quick Range</label>
+                    @foreach($presets as $label => [$presetStart, $presetEnd])
+                        <a href="{{ route('reports.index', ['start_date' => $presetStart, 'end_date' => $presetEnd, 'transaction_type' => request('transaction_type')]) }}"
+                           class="btn btn-sm {{ $startDate === $presetStart && $endDate === $presetEnd ? 'btn-primary' : 'btn-outline-primary' }} mb-1">
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
                 <form method="GET" action="{{ route('reports.index') }}">
                     <div class="row">
                         <div class="col-md-3">
@@ -134,6 +159,9 @@
                 <div class="d-flex gap-2">
                     <a href="{{ route('reports.export.statement', ['start_date' => $startDate, 'end_date' => $endDate]) }}" class="btn btn-primary">
                         <i data-feather="download" class="align-middle me-1"></i> Export PDF Report
+                    </a>
+                    <a href="{{ route('reports.export.csv', ['start_date' => $startDate, 'end_date' => $endDate, 'transaction_type' => request('transaction_type')]) }}" class="btn btn-success">
+                        <i data-feather="file-text" class="align-middle me-1"></i> Export CSV
                     </a>
                 </div>
             </div>

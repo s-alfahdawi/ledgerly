@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWalletRequest;
+use App\Http\Resources\WalletResource;
 use App\Models\Wallet;
 use App\Services\AccountContext;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class WalletController extends Controller
     {
         $accountId = $this->accountContext->id();
         $wallets = Wallet::forAccount($accountId)->get();
-        return response()->json($wallets);
+        return WalletResource::collection($wallets);
     }
 
     public function store(StoreWalletRequest $request)
@@ -33,20 +34,20 @@ class WalletController extends Controller
         $data = $request->validated();
         $data['account_id'] = $this->accountContext->id();
         $wallet = Wallet::create($data);
-        return response()->json($wallet, 201);
+        return (new WalletResource($wallet))->response()->setStatusCode(201);
     }
 
     public function show(Wallet $wallet)
     {
         $this->authorize('view', $wallet);
-        return response()->json($wallet);
+        return new WalletResource($wallet);
     }
 
     public function update(StoreWalletRequest $request, Wallet $wallet)
     {
         $this->authorize('update', $wallet);
         $wallet->update($request->validated());
-        return response()->json($wallet);
+        return new WalletResource($wallet);
     }
 
     public function destroy(Request $request, Wallet $wallet)

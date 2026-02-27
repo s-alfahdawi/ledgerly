@@ -3,10 +3,15 @@
 @section('title', 'Add Transaction')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
+    $d = $duplicate ?? null;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item"><a href="{{ route('transactions.index') }}">Transactions</a></li>
+    <li class="breadcrumb-item active">Add Transaction</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -22,14 +27,14 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('transactions.store') }}" method="POST">
+                <form action="{{ route('transactions.store') }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                     @csrf
                     <div class="mb-3">
                         <label class="form-label">Type <span class="text-danger">*</span></label>
                         <select name="type" id="transaction_type" class="form-select @error('type') is-invalid @enderror" required>
-                            <option value="income" {{ old('type') === 'income' ? 'selected' : '' }}>Income</option>
-                            <option value="expense" {{ old('type') === 'expense' ? 'selected' : '' }}>Expense</option>
-                            <option value="transfer" {{ old('type') === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                            <option value="income" {{ old('type', $d?->type) === 'income' ? 'selected' : '' }}>Income</option>
+                            <option value="expense" {{ old('type', $d?->type) === 'expense' ? 'selected' : '' }}>Expense</option>
+                            <option value="transfer" {{ old('type', $d?->type) === 'transfer' ? 'selected' : '' }}>Transfer</option>
                         </select>
                         @error('type')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -37,10 +42,10 @@
                     </div>
                     <div class="mb-3" id="wallet_field">
                         <label class="form-label">Income Source <span id="wallet_required" class="text-danger">*</span></label>
-                        <select name="wallet_id" id="wallet_id" class="form-select @error('wallet_id') is-invalid @enderror">
+                        <select name="wallet_id" id="wallet_id" class="form-select searchable-select @error('wallet_id') is-invalid @enderror">
                             <option value="">Select Income Source...</option>
                             @foreach($wallets as $wallet)
-                                <option value="{{ $wallet->id }}" {{ old('wallet_id') == $wallet->id ? 'selected' : '' }}>{{ $wallet->name }}</option>
+                                <option value="{{ $wallet->id }}" {{ old('wallet_id', $d?->wallet_id) == $wallet->id ? 'selected' : '' }}>{{ $wallet->name }}</option>
                             @endforeach
                         </select>
                         @error('wallet_id')
@@ -49,10 +54,10 @@
                     </div>
                     <div class="mb-3" id="category_field">
                         <label class="form-label">Expense Type <span id="category_required" class="text-danger" style="display: none;">*</span></label>
-                        <select name="category_id" id="category_id" class="form-select @error('category_id') is-invalid @enderror">
+                        <select name="category_id" id="category_id" class="form-select searchable-select @error('category_id') is-invalid @enderror">
                             <option value="">None</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                <option value="{{ $category->id }}" {{ old('category_id', $d?->category_id) == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                             @endforeach
                         </select>
                         @error('category_id')
@@ -61,7 +66,7 @@
                     </div>
                     <div class="mb-3" id="transfer_fields" style="display: none;">
                         <label class="form-label">To Income Source</label>
-                        <select name="to_wallet_id" class="form-select @error('to_wallet_id') is-invalid @enderror">
+                        <select name="to_wallet_id" class="form-select searchable-select @error('to_wallet_id') is-invalid @enderror">
                             <option value="">Select Income Source...</option>
                             @foreach($wallets as $wallet)
                                 <option value="{{ $wallet->id }}" {{ old('to_wallet_id') == $wallet->id ? 'selected' : '' }}>{{ $wallet->name }}</option>
@@ -73,7 +78,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Amount ({{ $currencyCode }}) <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror" step="0.01" min="0.01" value="{{ old('amount') }}" required>
+                        <input type="number" name="amount" class="form-control @error('amount') is-invalid @enderror" step="0.01" min="0.01" value="{{ old('amount', $d?->amount) }}" required>
                         @error('amount')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -87,8 +92,32 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Note</label>
-                        <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3">{{ old('note') }}</textarea>
+                        <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3">{{ old('note', $d?->note) }}</textarea>
                         @error('note')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    @if(isset($tags) && $tags->isNotEmpty())
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($tags as $tag)
+                                <div>
+                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="btn-check" id="tag_create_{{ $tag->id }}" autocomplete="off" {{ in_array($tag->id, old('tags', $d ? $d->tags->pluck('id')->all() : [])) ? 'checked' : '' }}>
+                                    <label class="btn btn-sm btn-outline-secondary" for="tag_create_{{ $tag->id }}">
+                                        <span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:{{ $tag->color }}"></span>{{ $tag->name }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted mt-1 d-block"><a href="{{ route('tags.index') }}">Manage tags</a></small>
+                    </div>
+                    @endif
+                    <div class="mb-3">
+                        <label class="form-label">Receipts / Attachments</label>
+                        <input type="file" name="attachments[]" class="form-control @error('attachments.*') is-invalid @enderror" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                        <small class="text-muted">Upload receipts, invoices, or documents. Max 5 files, 10MB each. Supports images, PDF, and Office files.</small>
+                        @error('attachments.*')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

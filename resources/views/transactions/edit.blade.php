@@ -3,10 +3,14 @@
 @section('title', 'Edit Transaction')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item"><a href="{{ route('transactions.index') }}">Transactions</a></li>
+    <li class="breadcrumb-item active">Edit Transaction</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -22,7 +26,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('transactions.update', $transaction) }}" method="POST">
+                <form action="{{ route('transactions.update', $transaction) }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                     @csrf
                     @method('PUT')
                     <div class="mb-3">
@@ -38,7 +42,7 @@
                     </div>
                     <div class="mb-3" id="wallet_field">
                         <label class="form-label">Income Source <span id="wallet_required" class="text-danger">*</span></label>
-                        <select name="wallet_id" id="wallet_id" class="form-select @error('wallet_id') is-invalid @enderror">
+                        <select name="wallet_id" id="wallet_id" class="form-select searchable-select @error('wallet_id') is-invalid @enderror">
                             <option value="" {{ old('wallet_id', $transaction->wallet_id) === '' || old('wallet_id', $transaction->wallet_id) === null ? 'selected' : '' }}>Select Income Source...</option>
                             @foreach($wallets as $wallet)
                                 <option value="{{ $wallet->id }}" {{ old('wallet_id', $transaction->wallet_id) == $wallet->id ? 'selected' : '' }}>{{ $wallet->name }}</option>
@@ -50,7 +54,7 @@
                     </div>
                     <div class="mb-3" id="category_field">
                         <label class="form-label">Expense Type <span id="category_required" class="text-danger" style="display: none;">*</span></label>
-                        <select name="category_id" id="category_id" class="form-select @error('category_id') is-invalid @enderror">
+                        <select name="category_id" id="category_id" class="form-select searchable-select @error('category_id') is-invalid @enderror">
                             <option value="">None</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ old('category_id', $transaction->category_id) == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
@@ -78,6 +82,57 @@
                         <label class="form-label">Note</label>
                         <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3">{{ old('note', $transaction->note) }}</textarea>
                         @error('note')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    @if(isset($tags) && $tags->isNotEmpty())
+                    @php $selectedTags = old('tags', $transaction->tags->pluck('id')->toArray()); @endphp
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($tags as $tag)
+                                <div>
+                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="btn-check" id="tag_edit_{{ $tag->id }}" autocomplete="off" {{ in_array($tag->id, $selectedTags) ? 'checked' : '' }}>
+                                    <label class="btn btn-sm btn-outline-secondary" for="tag_edit_{{ $tag->id }}">
+                                        <span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:{{ $tag->color }}"></span>{{ $tag->name }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted mt-1 d-block"><a href="{{ route('tags.index') }}">Manage tags</a></small>
+                    </div>
+                    @endif
+                    @if($transaction->attachments->isNotEmpty())
+                    <div class="mb-3">
+                        <label class="form-label">Current Attachments</label>
+                        <div class="list-group">
+                            @foreach($transaction->attachments as $attachment)
+                                <div class="list-group-item d-flex align-items-center justify-content-between">
+                                    <div>
+                                        @if($attachment->isImage())
+                                            <i data-feather="image" class="icon-xs me-2 text-info"></i>
+                                        @else
+                                            <i data-feather="file" class="icon-xs me-2 text-secondary"></i>
+                                        @endif
+                                        <a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->filename }}</a>
+                                        <small class="text-muted ms-2">{{ $attachment->human_size }}</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal" data-bs-target="#confirmModal"
+                                        data-action="{{ route('attachments.destroy', $attachment) }}"
+                                        data-message="Are you sure you want to delete this attachment?">
+                                        <i data-feather="trash-2" class="icon-xs"></i>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    <div class="mb-3">
+                        <label class="form-label">Add Receipts / Attachments</label>
+                        <input type="file" name="attachments[]" class="form-control @error('attachments.*') is-invalid @enderror" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                        <small class="text-muted">Upload receipts, invoices, or documents. Max 5 files, 10MB each.</small>
+                        @error('attachments.*')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -121,4 +176,6 @@
     updateRequired();
 })();
 </script>
+
+<x-confirm-modal />
 @endsection

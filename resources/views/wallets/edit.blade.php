@@ -3,10 +3,14 @@
 @section('title', 'Edit Income Source')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item"><a href="{{ route('wallets.index') }}">Income Sources</a></li>
+    <li class="breadcrumb-item active">Edit Income Source</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -22,7 +26,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('wallets.update', $wallet) }}" method="POST">
+                <form action="{{ route('wallets.update', $wallet) }}" method="POST" class="needs-validation" novalidate>
                     @csrf
                     @method('PUT')
                     <div class="mb-3">

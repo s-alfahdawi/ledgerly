@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\Currency;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Account;
@@ -52,7 +53,7 @@ class RegisteredUserController extends Controller
         
         // If there's an invitation token, currency is not required
         if (!$request->has('invitation_token')) {
-            $rules['currency_code'] = ['required', 'string', 'in:IQD,USD'];
+            $rules['currency_code'] = ['required', 'string', 'in:' . implode(',', Currency::values())];
         }
         
         $request->validate($rules);
@@ -88,7 +89,7 @@ class RegisteredUserController extends Controller
                 // Auto-create a default account for the user
                 $account = Account::create([
                     'name' => $user->name . "'s Account",
-                    'currency_code' => $request->currency_code ?? 'IQD',
+                    'currency_code' => $request->currency_code ?? Currency::IQD->value,
                     'timezone' => 'Asia/Baghdad', // Default timezone
                     'owner_user_id' => $user->id,
                 ]);
@@ -119,6 +120,6 @@ class RegisteredUserController extends Controller
                 ->with('success', 'Welcome! You have successfully joined ' . $account->name . ' as a ' . ucfirst($user->accounts()->first()->pivot->role) . '.');
         }
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(route('onboarding.index', absolute: false));
     }
 }

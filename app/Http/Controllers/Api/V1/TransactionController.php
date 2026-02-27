@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\AccountContext;
 use App\Services\TransactionService;
@@ -49,7 +50,7 @@ class TransactionController extends Controller
             $query->whereBetween('occurred_at', [$request->start_date, $request->end_date]);
         }
 
-        return response()->json($query->paginate(20));
+        return TransactionResource::collection($query->paginate(20));
     }
 
     public function store(StoreTransactionRequest $request)
@@ -61,18 +62,18 @@ class TransactionController extends Controller
         if ($data['type'] === 'transfer' && $request->filled('to_wallet_id')) {
             $data['to_wallet_id'] = $request->to_wallet_id;
             $transactions = $this->transactionService->createTransfer($data);
-            return response()->json($transactions, 201);
+            return TransactionResource::collection(collect($transactions))->response()->setStatusCode(201);
         }
 
         $transaction = $this->transactionService->create($data);
-        return response()->json($transaction, 201);
+        return (new TransactionResource($transaction))->response()->setStatusCode(201);
     }
 
     public function show(Transaction $transaction)
     {
         $this->authorize('view', $transaction);
         $transaction->load(['wallet', 'category', 'creator', 'updater']);
-        return response()->json($transaction);
+        return new TransactionResource($transaction);
     }
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction)
@@ -83,7 +84,7 @@ class TransactionController extends Controller
         $data['updated_by'] = $request->user()->id;
 
         $transaction = $this->transactionService->update($transaction, $data);
-        return response()->json($transaction);
+        return new TransactionResource($transaction);
     }
 
     public function destroy(Request $request, Transaction $transaction)

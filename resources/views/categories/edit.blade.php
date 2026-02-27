@@ -3,9 +3,13 @@
 @section('title', 'Edit Expense Type')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item"><a href="{{ route('categories.index') }}">Expense Types</a></li>
+    <li class="breadcrumb-item active">Edit Expense Type</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -21,7 +25,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('categories.update', $category) }}" method="POST">
+                <form action="{{ route('categories.update', $category) }}" method="POST" class="needs-validation" novalidate>
                     @csrf
                     @method('PUT')
                     <div class="mb-3">

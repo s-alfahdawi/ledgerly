@@ -3,10 +3,13 @@
 @section('title', 'Income Sources')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item active">Income Sources</li>
+@endsection
 
 @section('content')
 <div class="row">
@@ -92,13 +95,12 @@
                                         <a href="{{ route('wallets.edit', $wallet) }}" class="btn btn-sm btn-primary">
                                             <i data-feather="edit-2" class="icon-xs"></i> Edit
                                         </a>
-                                        <form action="{{ route('wallets.destroy', $wallet) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this income source?')">
-                                                <i data-feather="trash-2" class="icon-xs"></i> Delete
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                            data-bs-toggle="modal" data-bs-target="#confirmModal"
+                                            data-action="{{ route('wallets.destroy', $wallet) }}"
+                                            data-message="Are you sure you want to delete this income source?">
+                                            <i data-feather="trash-2" class="icon-xs"></i> Delete
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
@@ -124,4 +126,6 @@
         </div>
     </div>
 </div>
+
+<x-confirm-modal />
 @endsection

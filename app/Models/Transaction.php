@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Transaction extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Searchable;
 
     protected $fillable = [
         'account_id',
@@ -60,6 +63,16 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'deleted_by');
     }
 
+    public function tags(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
     /**
      * Scope queries to a specific account.
      * 
@@ -74,5 +87,17 @@ class Transaction extends Model
     public function scopeByType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type);
+    }
+
+    /**
+     * Get the indexable data array for the model (Laravel Scout).
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'note' => $this->note,
+            'amount' => $this->amount,
+            'type' => $this->type,
+        ];
     }
 }

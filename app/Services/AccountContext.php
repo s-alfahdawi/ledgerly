@@ -10,16 +10,26 @@ class AccountContext
 {
     const SESSION_KEY = 'current_account_id';
 
+    /**
+     * Account ID override for stateless API requests (set via X-Account-Id header).
+     */
+    private ?int $headerAccountId = null;
+
     public function id(): ?int
     {
+        // Header-based override takes priority (stateless API requests)
+        if ($this->headerAccountId !== null) {
+            return $this->headerAccountId;
+        }
+
         $id = Session::get(self::SESSION_KEY);
-        
+
         // If no account is set in session, try to resolve it automatically
         if (!$id) {
             $this->resolve();
             $id = Session::get(self::SESSION_KEY);
         }
-        
+
         return $id;
     }
 
@@ -37,6 +47,23 @@ class AccountContext
     public function clear(): void
     {
         Session::forget(self::SESSION_KEY);
+    }
+
+    /**
+     * Set account ID from header (for stateless API requests).
+     * This bypasses session storage entirely.
+     */
+    public function setFromHeader(int $accountId): void
+    {
+        $this->headerAccountId = $accountId;
+    }
+
+    /**
+     * Check if this context was set via API header.
+     */
+    public function isFromHeader(): bool
+    {
+        return $this->headerAccountId !== null;
     }
 
     /**
@@ -58,7 +85,7 @@ class AccountContext
         }
 
         $currentId = Session::get(self::SESSION_KEY);
-        
+
         // If already set, verify it's still valid
         if ($currentId) {
             $account = Account::find($currentId);

@@ -11,7 +11,7 @@
 <div class="modal fade" id="confirmUserDeletionModal" tabindex="-1" aria-labelledby="confirmUserDeletionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" action="{{ route('profile.destroy') }}">
+            <form method="post" action="{{ route('profile.destroy') }}" class="needs-validation" novalidate>
                 @csrf
                 @method('delete')
 

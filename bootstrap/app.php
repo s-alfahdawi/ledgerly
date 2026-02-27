@@ -9,11 +9,12 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        health: '/up',
+        health: '/health',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'account' => \App\Http\Middleware\SetCurrentAccount::class,
+            'etag' => \App\Http\Middleware\ETagResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Category extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Searchable;
 
     protected $fillable = [
         'account_id',
@@ -59,5 +60,16 @@ class Category extends Model
     public function scopeByType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type)->orWhere('type', 'both');
+    }
+
+    /**
+     * Get the indexable data array for the model (Laravel Scout).
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'type' => $this->type,
+        ];
     }
 }

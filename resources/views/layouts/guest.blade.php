@@ -11,7 +11,9 @@
         <title>@yield('title', config('app.name', 'Laravel'))</title>
 
         <link rel="manifest" href="{{ url('/manifest.webmanifest') }}">
-        <link rel="apple-touch-icon" href="{{ asset('assets/minia/images/favicon.ico') }}">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+        <link rel="shortcut icon" href="{{ asset('favicon.svg') }}">
+        <link rel="apple-touch-icon" href="{{ asset('favicon.svg') }}">
 
         <!-- Bootstrap core CSS -->
         <link rel="stylesheet" href="{{ asset('assets/invoza/css/bootstrap.min.css') }}" type="text/css">

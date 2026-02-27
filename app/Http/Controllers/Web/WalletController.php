@@ -6,12 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWalletRequest;
 use App\Models\Wallet;
 use App\Services\AccountContext;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class WalletController extends Controller
 {
-    use AuthorizesRequests;
     public function __construct(
         private AccountContext $accountContext
     ) {
@@ -20,29 +18,26 @@ class WalletController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Wallet::class);
-        $accountId = $this->accountContext->id();
-        if (!$accountId) {
-            abort(403, 'No account selected.');
-        }
-        
+        $accountId = $this->requireAccountId();
+
         $query = Wallet::forAccount($accountId)->active()->with('transactions');
-        
+
         // Search functionality
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where('name', 'like', "%{$search}%");
         }
-        
+
         // Sorting
         $sortField = $request->get('sort', 'name');
         $sortDirection = $request->get('direction', 'asc');
         $allowedSorts = ['name', 'type', 'created_at'];
         if (in_array($sortField, $allowedSorts)) {
-            $query->reorder($sortField, $sortDirection); // Use reorder() to replace any existing orderBy
+            $query->reorder($sortField, $sortDirection);
         } else {
             $query->reorder('name', 'asc');
         }
-        
+
         $wallets = $query->paginate(15)->withQueryString();
 
         return view('wallets.index', compact('wallets'));
@@ -55,10 +50,7 @@ class WalletController extends Controller
 
     public function store(StoreWalletRequest $request)
     {
-        $accountId = $this->accountContext->id();
-        if (!$accountId) {
-            abort(403, 'No account selected.');
-        }
+        $accountId = $this->requireAccountId();
         $data = $request->validated();
         $data['account_id'] = $accountId;
 
@@ -71,14 +63,14 @@ class WalletController extends Controller
     public function edit(Wallet $wallet)
     {
         $this->authorize('update', $wallet);
-        
+
         return view('wallets.edit', compact('wallet'));
     }
 
     public function update(StoreWalletRequest $request, Wallet $wallet)
     {
         $this->authorize('update', $wallet);
-        
+
         $wallet->update($request->validated());
 
         return redirect()->route('wallets.index')
@@ -88,7 +80,7 @@ class WalletController extends Controller
     public function destroy(Wallet $wallet)
     {
         $this->authorize('delete', $wallet);
-        
+
         $wallet->update(['deleted_by' => auth()->id()]);
         $wallet->delete();
 

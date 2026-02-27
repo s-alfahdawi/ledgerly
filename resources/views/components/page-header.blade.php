@@ -1,13 +1,17 @@
-@php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
-@endphp
-
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0">@yield('page-title', 'Page')</h4>
+            <div>
+                <h4 class="mb-sm-0">@yield('page-title', 'Page')</h4>
+                @hasSection('breadcrumbs')
+                    <nav aria-label="breadcrumb" class="mt-1">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                            @yield('breadcrumbs')
+                        </ol>
+                    </nav>
+                @endhasSection
+            </div>
             <div class="page-title-right">
                 @hasSection('page-actions')
                     @yield('page-actions')

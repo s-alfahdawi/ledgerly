@@ -1,4 +1,4 @@
-<form method="post" action="{{ route('password.update') }}">
+<form method="post" action="{{ route('password.update') }}" class="needs-validation" novalidate>
     @csrf
     @method('put')
 

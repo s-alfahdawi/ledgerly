@@ -3,22 +3,42 @@
 @section('title', 'Dashboard')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
 
 @section('content')
+<div x-data="dashboardWidgets()" x-init="init()">
+
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
             <h4 class="mb-sm-0">Dashboard</h4>
+            <div class="page-title-right">
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i data-feather="sliders" class="icon-xs me-1"></i> Customize
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 260px;">
+                        <h6 class="dropdown-header px-0">Show / Hide Widgets</h6>
+                        <template x-for="widget in widgetList" :key="widget.key">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" :id="'toggle-' + widget.key" :checked="widgets[widget.key]" @change="toggle(widget.key)">
+                                <label class="form-check-label" :for="'toggle-' + widget.key" x-text="widget.label"></label>
+                            </div>
+                        </template>
+                        <div class="dropdown-divider"></div>
+                        <button class="btn btn-sm btn-outline-primary w-100" @click="resetAll()">Show All</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <p class="text-muted mb-4">Overview of your financial activity. Track your income, expenses, and balances at a glance.</p>
     </div>
 </div>
 
 {{-- All-Time Summary Cards --}}
+<div x-show="widgets.alltime" x-transition>
 <h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="globe" class="icon-xs me-1"></i> All-Time Summary</h6>
 <div class="row">
     <div class="col-xl-4 col-md-6">
@@ -66,7 +86,7 @@
                     <div class="flex-shrink-0 me-3">
                         <div class="avatar-sm">
                             <span class="avatar-title bg-primary-subtle text-primary rounded-circle font-size-18">
-                                <i data-feather="dollar-sign"></i>
+                                <i data-feather="briefcase"></i>
                             </span>
                         </div>
                     </div>
@@ -83,7 +103,10 @@
     </div>
 </div>
 
+</div>
+
 {{-- Current Month Summary Cards --}}
+<div x-show="widgets.monthly" x-transition>
 <h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="calendar" class="icon-xs me-1"></i> This Month ({{ now($account->timezone ?? 'UTC')->format('F Y') }})</h6>
 <div class="row">
     <div class="col-xl-4 col-md-6">
@@ -148,8 +171,10 @@
     </div>
 </div>
 
+</div>
+
 {{-- Income & Expense Category Totals Tables --}}
-<div class="row">
+<div class="row" x-show="widgets.tables" x-transition>
     <div class="col-xl-6">
         <div class="card">
             <div class="card-body">
@@ -250,7 +275,7 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row" x-show="widgets.ratio_chart" x-transition>
     <div class="col-xl-6">
         <div class="card">
             <div class="card-header">
@@ -295,20 +320,24 @@
                 <h4 class="card-title mb-0">Monthly Income vs Expense Trend</h4>
             </div>
             <div class="card-body">
-                <div id="income-expense-chart" style="height: 350px;"></div>
+                <div id="income-expense-chart" style="height: 350px;">
+                    <div class="skeleton skeleton-chart" style="height: 350px;"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row" x-show="widgets.breakdown_charts" x-transition>
     <div class="col-xl-6">
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title mb-0">Expense Types Breakdown</h4>
             </div>
             <div class="card-body">
-                <div id="expense-types-chart" style="height: 300px;"></div>
+                <div id="expense-types-chart" style="height: 300px;">
+                    <div class="skeleton skeleton-chart" style="height: 300px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -318,13 +347,15 @@
                 <h4 class="card-title mb-0">Income Sources Breakdown</h4>
             </div>
             <div class="card-body">
-                <div id="income-sources-chart" style="height: 300px;"></div>
+                <div id="income-sources-chart" style="height: 300px;">
+                    <div class="skeleton skeleton-chart" style="height: 300px;"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row" x-show="widgets.quick_actions" x-transition>
     <div class="col-xl-12">
         <div class="card">
             <div class="card-body">
@@ -336,18 +367,16 @@
                         </a>
                     </div>
                     @php
-                        $accountContext = app(\App\Services\AccountContext::class);
-                        $accountId = $accountContext->id();
                         $user = auth()->user();
                     @endphp
-                    @if($accountId && $user->hasPermissionInAccount($accountId, 'wallets.create'))
+                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'wallets.create'))
                     <div class="col-md-3">
                         <a href="{{ route('wallets.create') }}" class="btn btn-success w-100 mb-3">
                             <i data-feather="trending-up" class="align-middle me-1"></i> Add Income Source
                         </a>
                     </div>
                     @endif
-                    @if($accountId && $user->hasPermissionInAccount($accountId, 'categories.create'))
+                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'categories.create'))
                     <div class="col-md-3">
                         <a href="{{ route('categories.create') }}" class="btn btn-info w-100 mb-3">
                             <i data-feather="tag" class="align-middle me-1"></i> Add Expense Type
@@ -365,8 +394,56 @@
     </div>
 </div>
 
+{{-- Close the x-data wrapper --}}
+</div>
+
 @push('scripts')
 <script>
+function dashboardWidgets() {
+    var storageKey = 'ledgerly_dashboard_widgets';
+    var defaults = {
+        alltime: true,
+        monthly: true,
+        tables: true,
+        ratio_chart: true,
+        breakdown_charts: true,
+        quick_actions: true
+    };
+    return {
+        widgets: Object.assign({}, defaults),
+        widgetList: [
+            { key: 'alltime', label: 'All-Time Summary' },
+            { key: 'monthly', label: 'This Month Summary' },
+            { key: 'tables', label: 'Income & Expense Tables' },
+            { key: 'ratio_chart', label: 'Ratio & Trend Charts' },
+            { key: 'breakdown_charts', label: 'Breakdown Charts' },
+            { key: 'quick_actions', label: 'Quick Actions' }
+        ],
+        init: function() {
+            try {
+                var saved = localStorage.getItem(storageKey);
+                if (saved) {
+                    var parsed = JSON.parse(saved);
+                    this.widgets = Object.assign({}, defaults, parsed);
+                }
+            } catch (e) { /* ignore parse errors */ }
+        },
+        toggle: function(key) {
+            this.widgets[key] = !this.widgets[key];
+            this.save();
+        },
+        save: function() {
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(this.widgets));
+            } catch (e) { /* ignore storage errors */ }
+        },
+        resetAll: function() {
+            this.widgets = Object.assign({}, defaults);
+            this.save();
+        }
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     @php
         $hasMonthlyData = isset($monthlyData) && !empty($monthlyData);

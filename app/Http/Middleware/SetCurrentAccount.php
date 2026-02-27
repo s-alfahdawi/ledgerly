@@ -16,6 +16,10 @@ class SetCurrentAccount
 
     /**
      * Handle an incoming request.
+     *
+     * Supports two modes:
+     * - Web (session-based): account resolved from session
+     * - API (header-based): account resolved from X-Account-Id header (stateless)
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -25,6 +29,27 @@ class SetCurrentAccount
             return $next($request);
         }
 
+        // Check for X-Account-Id header (stateless API requests via Sanctum)
+        $headerAccountId = $request->header('X-Account-Id');
+        if ($headerAccountId !== null && is_numeric($headerAccountId)) {
+            $accountId = (int) $headerAccountId;
+
+            // Verify user is a member of the requested account
+            $isMember = $user->accounts()->where('accounts.id', $accountId)->exists();
+            if (!$isMember) {
+                return response()->json([
+                    'message' => 'You do not have access to the specified account.',
+                    'error' => 'invalid_account',
+                ], 403);
+            }
+
+            // Set the account context from header (no session write)
+            $this->accountContext->setFromHeader($accountId);
+
+            return $next($request);
+        }
+
+        // Session-based flow (web requests)
         $currentAccountId = $this->accountContext->id();
 
         // If no account is set in session, try to set the first available account

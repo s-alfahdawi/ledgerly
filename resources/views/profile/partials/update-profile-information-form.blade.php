@@ -1,4 +1,4 @@
-<form method="post" action="{{ route('profile.update') }}">
+<form method="post" action="{{ route('profile.update') }}" class="needs-validation" novalidate>
     @csrf
     @method('patch')
 

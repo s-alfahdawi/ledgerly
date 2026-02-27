@@ -3,17 +3,23 @@
 @section('title', 'Transactions')
 
 @php
-    $accountContext = app(\App\Services\AccountContext::class);
-    $account = $accountContext->account();
-    $currencyCode = $account?->currency_code ?? 'IQD';
+    $currencyCode = $__currencyCode;
+    $account = $__account;
 @endphp
+
+@section('breadcrumbs')
+    <li class="breadcrumb-item active">Transactions</li>
+@endsection
 
 @section('content')
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
             <h4 class="mb-sm-0">Transactions</h4>
-            <div class="page-title-right">
+            <div class="page-title-right d-flex gap-2">
+                <a href="{{ route('import.index') }}" class="btn btn-outline-primary">
+                    <i data-feather="upload" class="align-middle me-1"></i> Import CSV
+                </a>
                 <a href="{{ route('transactions.create') }}" class="btn btn-primary">
                     <i data-feather="plus" class="align-middle me-1"></i> Add Transaction
                 </a>
@@ -59,13 +65,22 @@
                         <label class="form-label">Search</label>
                         <input type="text" name="search" class="form-control" placeholder="Search notes..." value="{{ request('search') }}">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">Start Date</label>
                         <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">End Date</label>
                         <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tag</label>
+                        <select name="tag_id" class="form-select">
+                            <option value="">All Tags</option>
+                            @foreach(\App\Models\Tag::forAccount($account->id)->orderBy('name')->get() as $tag)
+                                <option value="{{ $tag->id }}" {{ request('tag_id') == $tag->id ? 'selected' : '' }}>{{ $tag->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-12">
                         <button type="submit" class="btn btn-primary">
@@ -81,6 +96,47 @@
     </div>
 </div>
 
+<!-- Bulk Action Toolbar (hidden until checkboxes selected) -->
+<div class="row mb-3" id="bulk-toolbar" style="display: none;">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-body py-2">
+                <form id="bulk-form" method="POST" action="{{ route('transactions.bulk') }}" class="d-flex align-items-center gap-3 flex-wrap">
+                    @csrf
+                    <div id="bulk-ids-container"></div>
+                    <span class="fw-semibold"><span id="bulk-count">0</span> selected</span>
+                    <div class="vr d-none d-sm-block"></div>
+                    <div class="d-flex align-items-center gap-2">
+                        <select id="bulk-action-select" name="action" class="form-select form-select-sm" style="width: auto;" required>
+                            <option value="">Choose action...</option>
+                            <option value="delete">Delete Selected</option>
+                            <option value="set_category">Set Category</option>
+                            <option value="add_tag">Add Tag</option>
+                            <option value="remove_tag">Remove Tag</option>
+                        </select>
+                        <select id="bulk-category" name="category_id" class="form-select form-select-sm" style="width: auto; display: none;">
+                            @foreach(\App\Models\Category::forAccount($account->id)->active()->get() as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        <select id="bulk-tag" name="tag_id" class="form-select form-select-sm" style="width: auto; display: none;">
+                            @foreach(\App\Models\Tag::forAccount($account->id)->orderBy('name')->get() as $tag)
+                                <option value="{{ $tag->id }}">{{ $tag->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary" id="bulk-apply-btn" disabled>
+                            Apply
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="bulk-deselect-btn">
+                        Deselect All
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -89,6 +145,9 @@
                     <table class="table table-nowrap table-hover mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" class="form-check-input" id="select-all">
+                                </th>
                                 <th>
                                     <a href="{{ route('transactions.index', array_merge(request()->all(), ['sort' => 'occurred_at', 'direction' => request('sort') == 'occurred_at' && request('direction') == 'desc' ? 'asc' : 'desc'])) }}" class="text-dark text-decoration-none">
                                         Date
@@ -116,12 +175,16 @@
                                 <th>Income Source</th>
                                 <th>Expense Type</th>
                                 <th>Note</th>
+                                <th>Tags</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($transactions as $transaction)
                                 <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input bulk-check" value="{{ $transaction->id }}">
+                                    </td>
                                     <td>{{ $transaction->occurred_at->format('M d, Y') }}</td>
                                     <td>
                                         <span class="badge bg-{{ $transaction->type === 'income' ? 'success' : ($transaction->type === 'expense' ? 'danger' : 'info') }}">
@@ -136,22 +199,29 @@
                                     <td>{{ $transaction->wallet->name ?? 'N/A' }}</td>
                                     <td>{{ $transaction->category->name ?? 'N/A' }}</td>
                                     <td>{{ Str::limit($transaction->note, 30) }}</td>
+                                    <td>
+                                        @foreach($transaction->tags as $tag)
+                                            <span class="badge" style="background-color: {{ $tag->color }}">{{ $tag->name }}</span>
+                                        @endforeach
+                                    </td>
                                     <td class="text-end">
+                                        <a href="{{ route('transactions.duplicate', $transaction) }}" class="btn btn-sm btn-outline-secondary" title="Duplicate">
+                                            <i data-feather="copy" class="icon-xs"></i>
+                                        </a>
                                         <a href="{{ route('transactions.edit', $transaction) }}" class="btn btn-sm btn-primary">
                                             <i data-feather="edit-2" class="icon-xs"></i> Edit
                                         </a>
-                                        <form action="{{ route('transactions.destroy', $transaction) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">
-                                                <i data-feather="trash-2" class="icon-xs"></i> Delete
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                            data-bs-toggle="modal" data-bs-target="#confirmModal"
+                                            data-action="{{ route('transactions.destroy', $transaction) }}"
+                                            data-message="Are you sure you want to delete this transaction?">
+                                            <i data-feather="trash-2" class="icon-xs"></i> Delete
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="9" class="text-center py-5">
                                         <div class="text-muted">
                                             <i data-feather="arrow-left-right" class="icon-lg mb-2"></i>
                                             <p class="mb-2">No transactions found.</p>
@@ -172,4 +242,91 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+(function() {
+    var toolbar = document.getElementById('bulk-toolbar');
+    var bulkForm = document.getElementById('bulk-form');
+    var idsContainer = document.getElementById('bulk-ids-container');
+    var countEl = document.getElementById('bulk-count');
+    var selectAll = document.getElementById('select-all');
+    var checkboxes = document.querySelectorAll('.bulk-check');
+    var actionSelect = document.getElementById('bulk-action-select');
+    var categorySelect = document.getElementById('bulk-category');
+    var tagSelect = document.getElementById('bulk-tag');
+    var applyBtn = document.getElementById('bulk-apply-btn');
+    var deselectBtn = document.getElementById('bulk-deselect-btn');
+
+    function updateToolbar() {
+        var checked = document.querySelectorAll('.bulk-check:checked');
+        var count = checked.length;
+        countEl.textContent = count;
+        toolbar.style.display = count > 0 ? '' : 'none';
+
+        // Update select-all state
+        selectAll.checked = count > 0 && count === checkboxes.length;
+        selectAll.indeterminate = count > 0 && count < checkboxes.length;
+
+        // Update hidden inputs
+        idsContainer.innerHTML = '';
+        checked.forEach(function(cb) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = cb.value;
+            idsContainer.appendChild(input);
+        });
+    }
+
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+        updateToolbar();
+    });
+
+    checkboxes.forEach(function(cb) {
+        cb.addEventListener('change', updateToolbar);
+    });
+
+    deselectBtn.addEventListener('click', function() {
+        checkboxes.forEach(function(cb) { cb.checked = false; });
+        selectAll.checked = false;
+        updateToolbar();
+    });
+
+    actionSelect.addEventListener('change', function() {
+        var action = actionSelect.value;
+        categorySelect.style.display = action === 'set_category' ? '' : 'none';
+        tagSelect.style.display = (action === 'add_tag' || action === 'remove_tag') ? '' : 'none';
+        applyBtn.disabled = !action;
+    });
+
+    bulkForm.addEventListener('submit', function(e) {
+        var action = actionSelect.value;
+        var count = document.querySelectorAll('.bulk-check:checked').length;
+        if (action === 'delete' && !bulkForm.dataset.confirmed) {
+            e.preventDefault();
+            var modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            document.getElementById('confirmModal-message').textContent = 'Are you sure you want to delete ' + count + ' transactions? This cannot be undone.';
+            var confirmForm = document.getElementById('confirmModal-form');
+            var confirmBtn = confirmForm.querySelector('button[type="submit"]');
+            var newBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+            newBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                bulkForm.dataset.confirmed = 'true';
+                modal.hide();
+                bulkForm.submit();
+            });
+            modal.show();
+        }
+        if (bulkForm.dataset.confirmed) {
+            delete bulkForm.dataset.confirmed;
+        }
+    });
+})();
+</script>
+@endpush
+
+<x-confirm-modal />
 @endsection

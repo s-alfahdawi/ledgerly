@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Wallet extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Searchable;
 
     protected $fillable = [
         'account_id',
@@ -55,5 +56,16 @@ class Wallet extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_archived', false);
+    }
+
+    /**
+     * Get the indexable data array for the model (Laravel Scout).
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'type' => $this->type,
+        ];
     }
 }

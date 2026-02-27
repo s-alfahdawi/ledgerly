@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\V1\WalletController;
 use App\Http\Controllers\Api\V1\ReportController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->middleware(['auth:sanctum', 'account'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:60,1', 'account', 'etag'])->group(function () {
     Route::apiResource('transactions', TransactionController::class)->names([
         'index' => 'api.transactions.index',
         'store' => 'api.transactions.store',

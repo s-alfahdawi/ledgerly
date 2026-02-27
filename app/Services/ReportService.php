@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Budget;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Support\ReportPeriod;
@@ -69,10 +70,10 @@ class ReportService
             } elseif ($transactionType === 'expense') {
                 $balanceCalc = 'SUM(-amount)';
             } else {
-                $balanceCalc = 'SUM(CASE WHEN type = "income" THEN amount ELSE -amount END)';
+                $balanceCalc = "SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END)";
             }
         } else {
-            $balanceCalc = 'SUM(CASE WHEN type = "income" THEN amount ELSE -amount END)';
+            $balanceCalc = "SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END)";
         }
 
         return $query->select('wallet_id', DB::raw("{$balanceCalc} as balance"))
@@ -182,20 +183,151 @@ class ReportService
             return [];
         }
 
-        return $wallets->map(function ($wallet) use ($accountId) {
-            $income = Transaction::forAccount($accountId)
-                ->where('wallet_id', $wallet->id)
-                ->byType('income')
-                ->sum('amount');
+        // Single query to get net amounts for all wallets
+        $walletIds = $wallets->pluck('id');
+        $totals = Transaction::forAccount($accountId)
+            ->whereIn('wallet_id', $walletIds)
+            ->whereIn('type', ['income', 'expense'])
+            ->select(
+                'wallet_id',
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense")
+            )
+            ->groupBy('wallet_id')
+            ->get()
+            ->keyBy('wallet_id');
 
-            $expense = Transaction::forAccount($accountId)
-                ->where('wallet_id', $wallet->id)
-                ->byType('expense')
-                ->sum('amount');
+        return $wallets->map(function ($wallet) use ($totals) {
+            $walletTotals = $totals->get($wallet->id);
+            $income = $walletTotals ? (float) $walletTotals->total_income : 0;
+            $expense = $walletTotals ? (float) $walletTotals->total_expense : 0;
 
             return [
                 'wallet' => $wallet->name,
                 'balance' => (float) ($wallet->opening_balance + $income - $expense),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Get monthly income/expense/net for the last N months in a single query.
+     * Replaces calling getMonthlySummary() in a loop (N*2 queries -> 1 query).
+     */
+    public function getMonthlyTrend(int $accountId, int $months, string $timezone = 'UTC'): array
+    {
+        $now = now($timezone);
+        $startDate = $now->copy()->subMonths($months - 1)->startOfMonth();
+        $period = ReportPeriod::fromDates(
+            $startDate->toDateString(),
+            $now->copy()->endOfMonth()->toDateString(),
+            $timezone
+        );
+
+        // Use database-agnostic month grouping
+        $driver = DB::getDriverName();
+        $monthExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m', occurred_at)"
+            : "DATE_FORMAT(occurred_at, '%Y-%m')";
+
+        $rows = Transaction::forAccount($accountId)
+            ->whereIn('type', ['income', 'expense'])
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->select(
+                DB::raw("{$monthExpr} as month_key"),
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense")
+            )
+            ->groupBy('month_key')
+            ->get()
+            ->keyBy('month_key');
+
+        $result = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $key = $date->format('Y-m');
+            $income = $rows->has($key) ? (float) $rows->get($key)->income : 0;
+            $expense = $rows->has($key) ? (float) $rows->get($key)->expense : 0;
+
+            $result[] = [
+                'month' => $date->format('M Y'),
+                'income' => $income,
+                'expense' => $expense,
+                'net' => $income - $expense,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get budget vs actual spending for active budgets in the current period.
+     * Returns each budget with its category, limit, spent amount, and percentage.
+     */
+    public function getBudgetProgress(int $accountId, string $timezone = 'UTC'): array
+    {
+        $budgets = Budget::forAccount($accountId)
+            ->active()
+            ->with('category')
+            ->get();
+
+        if ($budgets->isEmpty()) {
+            return [];
+        }
+
+        $now = now($timezone);
+
+        // Get spending per category for the current period
+        $categoryIds = $budgets->pluck('category_id')->filter()->unique();
+
+        $periodMap = [];
+        foreach ($budgets as $budget) {
+            $period = match ($budget->period) {
+                'weekly' => ReportPeriod::fromDates(
+                    $now->copy()->startOfWeek()->toDateString(),
+                    $now->copy()->endOfWeek()->toDateString(),
+                    $timezone
+                ),
+                'yearly' => ReportPeriod::fromDates(
+                    $now->copy()->startOfYear()->toDateString(),
+                    $now->copy()->endOfYear()->toDateString(),
+                    $timezone
+                ),
+                default => ReportPeriod::forMonth($now->month, $now->year, $timezone),
+            };
+            $periodMap[$budget->id] = $period;
+        }
+
+        // For monthly budgets (most common), batch the query
+        $monthlyPeriod = ReportPeriod::forMonth($now->month, $now->year, $timezone);
+        $spending = Transaction::forAccount($accountId)
+            ->byType('expense')
+            ->whereIn('category_id', $categoryIds)
+            ->whereBetween('occurred_at', [$monthlyPeriod->startDateString(), $monthlyPeriod->endDateString()])
+            ->select('category_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('category_id')
+            ->get()
+            ->keyBy('category_id');
+
+        return $budgets->map(function ($budget) use ($spending) {
+            $spent = 0;
+            if ($budget->category_id && $spending->has($budget->category_id)) {
+                $spent = (float) $spending->get($budget->category_id)->total;
+            }
+
+            $limit = (float) $budget->amount;
+            $percentage = $limit > 0 ? min(round(($spent / $limit) * 100, 1), 100) : 0;
+            $remaining = max($limit - $spent, 0);
+
+            return [
+                'id' => $budget->id,
+                'category' => $budget->category?->name ?? 'Overall',
+                'category_color' => $budget->category?->color ?? '#405189',
+                'period' => $budget->period,
+                'limit' => $limit,
+                'spent' => $spent,
+                'remaining' => $remaining,
+                'percentage' => $percentage,
+                'over_budget' => $spent > $limit,
             ];
         })->toArray();
     }
