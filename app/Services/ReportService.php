@@ -82,7 +82,7 @@ class ReportService
             ->get()
             ->map(function ($item) {
                 return [
-                    'wallet' => $item->wallet->name,
+                    'wallet' => $item->wallet?->name ?? 'Unknown Wallet',
                     'balance' => (float) $item->balance,
                 ];
             })

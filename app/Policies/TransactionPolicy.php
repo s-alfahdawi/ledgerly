@@ -27,7 +27,7 @@ class TransactionPolicy
     public function view(User $user, Transaction $transaction): bool
     {
         $accountId = $this->accountContext->id();
-        if (!$accountId || $transaction->account_id !== $accountId) {
+        if (!$accountId || (int) $transaction->account_id !== $accountId) {
             return false;
         }
 
@@ -49,7 +49,7 @@ class TransactionPolicy
     public function update(User $user, Transaction $transaction): bool
     {
         $accountId = $this->accountContext->id();
-        if (!$accountId || $transaction->account_id !== $accountId) {
+        if (!$accountId || (int) $transaction->account_id !== $accountId) {
             return false;
         }
 
@@ -74,7 +74,7 @@ class TransactionPolicy
     public function delete(User $user, Transaction $transaction): bool
     {
         $accountId = $this->accountContext->id();
-        if (!$accountId || $transaction->account_id !== $accountId) {
+        if (!$accountId || (int) $transaction->account_id !== $accountId) {
             return false;
         }
 

@@ -5,16 +5,31 @@
 @php
     $currencyCode = $__currencyCode;
     $account = $__account;
+
+    // Trend helpers
+    $incomeDiff = $summary['income'] - ($lastMonthSummary['income'] ?? 0);
+    $expenseDiff = $summary['expense'] - ($lastMonthSummary['expense'] ?? 0);
+
+    $incomePct = ($lastMonthSummary['income'] ?? 0) > 0 ? round(($incomeDiff / $lastMonthSummary['income']) * 100, 1) : ($summary['income'] > 0 ? 100 : 0);
+    $expensePct = ($lastMonthSummary['expense'] ?? 0) > 0 ? round(($expenseDiff / $lastMonthSummary['expense']) * 100, 1) : ($summary['expense'] > 0 ? 100 : 0);
+    $savingsRate = $summary['income'] > 0 ? round(($summary['net'] / $summary['income']) * 100, 1) : 0;
 @endphp
 
 @section('content')
 <div x-data="dashboardWidgets()" x-init="init()">
 
+{{-- Page Header --}}
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0">Dashboard</h4>
-            <div class="page-title-right">
+            <div>
+                <h4 class="mb-1">Dashboard</h4>
+                <p class="text-muted mb-0">{{ now($account->timezone ?? 'UTC')->format('l, F j, Y') }}</p>
+            </div>
+            <div class="page-title-right d-flex gap-2">
+                <a href="{{ route('transactions.create') }}" class="btn btn-primary btn-sm">
+                    <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
+                </a>
                 <div class="dropdown d-inline-block">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                         <i data-feather="sliders" class="icon-xs me-1"></i> Customize
@@ -33,306 +48,362 @@
                 </div>
             </div>
         </div>
-        <p class="text-muted mb-4">Overview of your financial activity. Track your income, expenses, and balances at a glance.</p>
     </div>
 </div>
 
-{{-- All-Time Summary Cards --}}
-<div x-show="widgets.alltime" x-transition>
-<h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="globe" class="icon-xs me-1"></i> All-Time Summary</h6>
-<div class="row">
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-success border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-success-subtle text-success rounded-circle font-size-18">
-                                <i data-feather="trending-up"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Income</span>
-                        <h4 class="mb-0 text-success">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['income'], $currencyCode) }}</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-danger border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-danger-subtle text-danger rounded-circle font-size-18">
-                                <i data-feather="trending-down"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Total Expense</span>
-                        <h4 class="mb-0 text-danger">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['expense'], $currencyCode) }}</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-primary border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-primary-subtle text-primary rounded-circle font-size-18">
-                                <i data-feather="briefcase"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Current Cash</span>
-                        <h4 class="mb-0 {{ $allTimeSummary['current_cash'] >= 0 ? 'text-primary' : 'text-danger' }}">
-                            {{ \App\Helpers\CurrencyHelper::format($allTimeSummary['current_cash'], $currencyCode) }}
-                        </h4>
-                        <small class="text-muted">Income - Expense</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-</div>
-
-{{-- Current Month Summary Cards --}}
+{{-- ============================================================== --}}
+{{-- KEY METRICS ROW --}}
+{{-- ============================================================== --}}
 <div x-show="widgets.monthly" x-transition>
-<h6 class="text-muted text-uppercase fw-semibold mb-3"><i data-feather="calendar" class="icon-xs me-1"></i> This Month ({{ now($account->timezone ?? 'UTC')->format('F Y') }})</h6>
 <div class="row">
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-success border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-success-subtle text-success rounded-circle font-size-18">
-                                <i data-feather="arrow-up-circle"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Income</span>
-                        <h4 class="mb-0 text-success">{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-danger border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-danger-subtle text-danger rounded-circle font-size-18">
-                                <i data-feather="arrow-down-circle"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Expense</span>
-                        <h4 class="mb-0 text-danger">{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-start border-info border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0 me-3">
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-info-subtle text-info rounded-circle font-size-18">
-                                <i data-feather="activity"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <span class="text-muted text-uppercase font-size-12 fw-semibold">Monthly Net</span>
-                        <h4 class="mb-0 {{ $summary['net'] >= 0 ? 'text-info' : 'text-danger' }}">
-                            {{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}
-                        </h4>
-                        <small class="text-muted">Income - Expense</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-</div>
-
-{{-- Income & Expense Category Totals Tables --}}
-<div class="row" x-show="widgets.tables" x-transition>
-    <div class="col-xl-6">
+    {{-- Monthly Income --}}
+    <div class="col-xl-3 col-md-6">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title mb-4">
-                    <i data-feather="arrow-up-circle" class="icon-xs text-success me-1"></i>
-                    Income by Source
-                </h4>
-                @if(!empty($incomeWalletTotals) && count($incomeWalletTotals) > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover table-nowrap align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Source</th>
-                                    <th class="text-center">Transactions</th>
-                                    <th class="text-end">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($incomeWalletTotals as $index => $wallet)
-                                    <tr>
-                                        <td class="text-muted">{{ $index + 1 }}</td>
-                                        <td>
-                                            <span class="fw-medium">{{ $wallet['wallet'] }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-success-subtle text-success">{{ $wallet['transaction_count'] }}</span>
-                                        </td>
-                                        <td class="text-end">
-                                            <strong class="text-success">{{ \App\Helpers\CurrencyHelper::format($wallet['total'], $currencyCode) }}</strong>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <td colspan="2"><strong>Total</strong></td>
-                                    <td class="text-center"><strong>{{ array_sum(array_column($incomeWalletTotals, 'transaction_count')) }}</strong></td>
-                                    <td class="text-end"><strong class="text-success">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($incomeWalletTotals, 'total')), $currencyCode) }}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">Monthly Income</p>
+                        <h4 class="mb-1 text-success">{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</h4>
+                        @if($lastMonthSummary['income'] > 0 || $summary['income'] > 0)
+                        <p class="mb-0 font-size-12">
+                            <span class="text-{{ $incomeDiff >= 0 ? 'success' : 'danger' }}">
+                                <i class="mdi mdi-arrow-{{ $incomeDiff >= 0 ? 'up' : 'down' }}-bold"></i>
+                                {{ abs($incomePct) }}%
+                            </span>
+                            <span class="text-muted ms-1">vs last month</span>
+                        </p>
+                        @endif
                     </div>
-                @else
-                    <p class="text-muted mb-0">No income transactions recorded yet.</p>
-                @endif
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-success-subtle text-success rounded">
+                            <i data-feather="trending-up" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-6">
+
+    {{-- Monthly Expense --}}
+    <div class="col-xl-3 col-md-6">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title mb-4">
-                    <i data-feather="arrow-down-circle" class="icon-xs text-danger me-1"></i>
-                    Expense by Category
-                </h4>
-                @if(!empty($expenseCategoryTotals) && count($expenseCategoryTotals) > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover table-nowrap align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Category</th>
-                                    <th class="text-center">Transactions</th>
-                                    <th class="text-end">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($expenseCategoryTotals as $index => $cat)
-                                    <tr>
-                                        <td class="text-muted">{{ $index + 1 }}</td>
-                                        <td>
-                                            <span class="fw-medium">{{ $cat['category'] }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-danger-subtle text-danger">{{ $cat['transaction_count'] }}</span>
-                                        </td>
-                                        <td class="text-end">
-                                            <strong class="text-danger">{{ \App\Helpers\CurrencyHelper::format($cat['total'], $currencyCode) }}</strong>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <td colspan="2"><strong>Total</strong></td>
-                                    <td class="text-center"><strong>{{ array_sum(array_column($expenseCategoryTotals, 'transaction_count')) }}</strong></td>
-                                    <td class="text-end"><strong class="text-danger">{{ \App\Helpers\CurrencyHelper::format(array_sum(array_column($expenseCategoryTotals, 'total')), $currencyCode) }}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">Monthly Expense</p>
+                        <h4 class="mb-1 text-danger">{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</h4>
+                        @if($lastMonthSummary['expense'] > 0 || $summary['expense'] > 0)
+                        <p class="mb-0 font-size-12">
+                            <span class="text-{{ $expenseDiff <= 0 ? 'success' : 'danger' }}">
+                                <i class="mdi mdi-arrow-{{ $expenseDiff <= 0 ? 'down' : 'up' }}-bold"></i>
+                                {{ abs($expensePct) }}%
+                            </span>
+                            <span class="text-muted ms-1">vs last month</span>
+                        </p>
+                        @endif
                     </div>
-                @else
-                    <p class="text-muted mb-0">No expense transactions recorded yet.</p>
-                @endif
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-danger-subtle text-danger rounded">
+                            <i data-feather="trending-down" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Net Savings --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">Net Savings</p>
+                        <h4 class="mb-1 {{ $summary['net'] >= 0 ? 'text-primary' : 'text-danger' }}">{{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}</h4>
+                        @if($summary['income'] > 0)
+                        <p class="mb-0 font-size-12">
+                            <span class="text-{{ $savingsRate >= 0 ? 'success' : 'danger' }}">{{ $savingsRate }}% savings rate</span>
+                        </p>
+                        @endif
+                    </div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-primary-subtle text-primary rounded">
+                            <i data-feather="pocket" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Total Balance --}}
+    <div class="col-xl-3 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">Total Balance</p>
+                        <h4 class="mb-1 {{ $totalBalance >= 0 ? 'text-info' : 'text-danger' }}">{{ \App\Helpers\CurrencyHelper::format($totalBalance, $currencyCode) }}</h4>
+                        <p class="mb-0 font-size-12">
+                            <span class="text-muted">{{ $transactionCount ?? 0 }} txns this month</span>
+                        </p>
+                    </div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-info-subtle text-info rounded">
+                            <i data-feather="briefcase" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+</div>
 
+{{-- ============================================================== --}}
+{{-- CHARTS ROW - Income/Expense Trend + Donut --}}
+{{-- ============================================================== --}}
 <div class="row" x-show="widgets.ratio_chart" x-transition>
-    <div class="col-xl-6">
+    <div class="col-xl-8">
         <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">Income vs Expense Ratio</h4>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Income vs Expense Trend</h4>
+                <span class="badge bg-light text-muted">Last 12 months</span>
             </div>
             <div class="card-body">
-                <div id="income-expense-donut-chart" style="height: 350px;"></div>
-                <div class="text-center mt-3">
-                    <p class="mb-1">
-                        <span class="badge bg-success me-2">Income</span>
-                        <strong>{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</strong>
-                    </p>
-                    <p class="mb-1">
-                        <span class="badge bg-danger me-2">Expense</span>
-                        <strong>{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</strong>
-                    </p>
-                    @php
-                        $expensePercentage = $summary['income'] > 0 ? ($summary['expense'] / $summary['income']) * 100 : 0;
-                        $remainingPercentage = 100 - $expensePercentage;
-                    @endphp
-                    <p class="mt-2 mb-0">
-                        <small class="text-muted">
-                            @if($summary['income'] > 0)
-                                You spent <strong>{{ number_format($expensePercentage, 1) }}%</strong> of your income
-                                @if($summary['net'] > 0)
-                                    , saving <strong>{{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}</strong>
-                                @else
-                                    , with a deficit of <strong>{{ \App\Helpers\CurrencyHelper::format(abs($summary['net']), $currencyCode) }}</strong>
-                                @endif
-                            @else
-                                No income recorded this month
-                            @endif
-                        </small>
-                    </p>
+                <div id="income-expense-chart" style="height: 370px;">
+                    <div class="skeleton skeleton-chart" style="height: 370px;"></div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-6">
+    <div class="col-xl-4">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title mb-0">Monthly Income vs Expense Trend</h4>
+                <h4 class="card-title mb-0">This Month Ratio</h4>
             </div>
             <div class="card-body">
-                <div id="income-expense-chart" style="height: 350px;">
-                    <div class="skeleton skeleton-chart" style="height: 350px;"></div>
+                <div id="income-expense-donut-chart" style="height: 250px;"></div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="font-size-13"><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#0ab39c"></span> Income</span>
+                        <strong>{{ \App\Helpers\CurrencyHelper::format($summary['income'], $currencyCode) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="font-size-13"><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#f06548"></span> Expense</span>
+                        <strong>{{ \App\Helpers\CurrencyHelper::format($summary['expense'], $currencyCode) }}</strong>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between">
+                        <span class="font-size-13 fw-semibold">Net</span>
+                        <strong class="{{ $summary['net'] >= 0 ? 'text-success' : 'text-danger' }}">{{ \App\Helpers\CurrencyHelper::format($summary['net'], $currencyCode) }}</strong>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+{{-- ============================================================== --}}
+{{-- WALLET BALANCES + TOP EXPENSE CATEGORIES --}}
+{{-- ============================================================== --}}
 <div class="row" x-show="widgets.breakdown_charts" x-transition>
     <div class="col-xl-6">
         <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="credit-card" class="icon-xs me-1"></i> Wallet Balances</h4>
+                <a href="{{ route('wallets.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                @if(!empty($walletBalances))
+                    @php $maxBalance = max(1, max(array_map('abs', array_column($walletBalances, 'balance')))); @endphp
+                    @foreach($walletBalances as $wb)
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">{{ $wb['wallet'] }}</span>
+                                <span class="fw-semibold {{ $wb['balance'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                    {{ \App\Helpers\CurrencyHelper::format($wb['balance'], $currencyCode) }}
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar {{ $wb['balance'] >= 0 ? 'bg-success' : 'bg-danger' }}"
+                                     style="width: {{ $maxBalance > 0 ? min(abs($wb['balance']) / $maxBalance * 100, 100) : 0 }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold">Total</span>
+                        <span class="fw-bold {{ $totalBalance >= 0 ? 'text-success' : 'text-danger' }}">
+                            {{ \App\Helpers\CurrencyHelper::format($totalBalance, $currencyCode) }}
+                        </span>
+                    </div>
+                @else
+                    <p class="text-muted mb-0">No wallets configured. <a href="{{ route('wallets.create') }}">Add one</a></p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="pie-chart" class="icon-xs me-1"></i> Top Expenses This Month</h4>
+                <a href="{{ route('reports.index') }}" class="btn btn-sm btn-outline-primary">Full Report</a>
+            </div>
+            <div class="card-body">
+                @if(!empty($topCategories))
+                    @foreach($topCategories as $cat)
+                        @php $pct = $summary['expense'] > 0 ? round(($cat['total'] / $summary['expense']) * 100, 1) : 0; @endphp
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">{{ $cat['category'] }}</span>
+                                <span>
+                                    <span class="text-danger fw-semibold">{{ \App\Helpers\CurrencyHelper::format($cat['total'], $currencyCode) }}</span>
+                                    <span class="text-muted font-size-12 ms-1">({{ $pct }}%)</span>
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-danger" style="width: {{ $pct }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <p class="text-muted mb-0">No expenses recorded this month.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- BUDGET PROGRESS + RECENT TRANSACTIONS --}}
+{{-- ============================================================== --}}
+<div class="row" x-show="widgets.tables" x-transition>
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="target" class="icon-xs me-1"></i> Budget Progress</h4>
+                <a href="{{ route('budgets.index') }}" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body">
+                @if(!empty($budgetProgress))
+                    @foreach($budgetProgress as $budget)
+                        @php $barColor = $budget['percentage'] >= 90 ? 'danger' : ($budget['percentage'] >= 70 ? 'warning' : 'success'); @endphp
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-medium">{{ $budget['category'] }}</span>
+                                <span class="font-size-12">
+                                    <span class="{{ $budget['over_budget'] ? 'text-danger fw-bold' : 'text-muted' }}">
+                                        {{ \App\Helpers\CurrencyHelper::format($budget['spent'], $currencyCode) }}
+                                    </span>
+                                    / {{ \App\Helpers\CurrencyHelper::format($budget['limit'], $currencyCode) }}
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-{{ $barColor }}" style="width: {{ min($budget['percentage'], 100) }}%"></div>
+                            </div>
+                            @if($budget['over_budget'])
+                                <small class="text-danger fw-semibold">Over budget!</small>
+                            @else
+                                <small class="text-muted">{{ \App\Helpers\CurrencyHelper::format($budget['remaining'], $currencyCode) }} remaining</small>
+                            @endif
+                        </div>
+                    @endforeach
+                @else
+                    <div class="text-center py-3">
+                        <p class="text-muted mb-2">No budgets set up yet.</p>
+                        <a href="{{ route('budgets.create') }}" class="btn btn-sm btn-outline-primary">Create Budget</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="clock" class="icon-xs me-1"></i> Recent Transactions</h4>
+                <a href="{{ route('transactions.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                @if(isset($recentTransactions) && $recentTransactions->isNotEmpty())
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <tbody>
+                                @foreach($recentTransactions as $txn)
+                                    <tr>
+                                        <td style="width: 40px;" class="ps-3">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title bg-{{ $txn->type === 'income' ? 'success' : ($txn->type === 'expense' ? 'danger' : 'info') }}-subtle text-{{ $txn->type === 'income' ? 'success' : ($txn->type === 'expense' ? 'danger' : 'info') }} rounded-circle">
+                                                    <i data-feather="{{ $txn->type === 'income' ? 'arrow-up' : ($txn->type === 'expense' ? 'arrow-down' : 'repeat') }}" class="font-size-14"></i>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <h6 class="mb-0 font-size-13">{{ $txn->category?->name ?? $txn->wallet?->name ?? ucfirst($txn->type) }}</h6>
+                                            <small class="text-muted">{{ $txn->occurred_at->format('M d') }}@if($txn->note) &middot; {{ Str::limit($txn->note, 25) }}@endif</small>
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <span class="fw-semibold {{ $txn->type === 'income' ? 'text-success' : 'text-danger' }}">
+                                                {{ $txn->type === 'income' ? '+' : '-' }}{{ \App\Helpers\CurrencyHelper::format($txn->amount, $currencyCode) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-2">No transactions yet.</p>
+                        <a href="{{ route('transactions.create') }}" class="btn btn-sm btn-primary">Add Your First</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- ALL-TIME SUMMARY --}}
+{{-- ============================================================== --}}
+<div x-show="widgets.alltime" x-transition>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header">
-                <h4 class="card-title mb-0">Expense Types Breakdown</h4>
+                <h4 class="card-title mb-0"><i data-feather="globe" class="icon-xs me-1"></i> All-Time Summary</h4>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h5 class="text-success mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['income'], $currencyCode) }}</h5>
+                        <p class="text-muted mb-0">Total Income</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="text-danger mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['expense'], $currencyCode) }}</h5>
+                        <p class="text-muted mb-0">Total Expense</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="{{ $allTimeSummary['current_cash'] >= 0 ? 'text-primary' : 'text-danger' }} mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['current_cash'], $currencyCode) }}</h5>
+                        <p class="text-muted mb-0">Net Cash</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- BREAKDOWN CHARTS (Donut + Bar) --}}
+{{-- ============================================================== --}}
+<div class="row" x-show="widgets.breakdown_pie" x-transition>
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Expense Category Breakdown</h4>
             </div>
             <div class="card-body">
                 <div id="expense-types-chart" style="height: 300px;">
@@ -344,7 +415,7 @@
     <div class="col-xl-6">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title mb-0">Income Sources Breakdown</h4>
+                <h4 class="card-title mb-0">Income Source Balances</h4>
             </div>
             <div class="card-body">
                 <div id="income-sources-chart" style="height: 300px;">
@@ -355,68 +426,65 @@
     </div>
 </div>
 
+{{-- ============================================================== --}}
+{{-- QUICK ACTIONS --}}
+{{-- ============================================================== --}}
 <div class="row" x-show="widgets.quick_actions" x-transition>
-    <div class="col-xl-12">
+    <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h4 class="card-title mb-4">Quick Actions</h4>
-                <div class="row">
-                    <div class="col-md-3">
-                        <a href="{{ route('transactions.create') }}" class="btn btn-primary w-100 mb-3">
-                            <i data-feather="plus" class="align-middle me-1"></i> New Transaction
-                        </a>
-                    </div>
-                    @php
-                        $user = auth()->user();
-                    @endphp
+                <h4 class="card-title mb-3">Quick Actions</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('transactions.create') }}" class="btn btn-primary">
+                        <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
+                    </a>
+                    @php $user = auth()->user(); @endphp
                     @if($__accountId && $user->hasPermissionInAccount($__accountId, 'wallets.create'))
-                    <div class="col-md-3">
-                        <a href="{{ route('wallets.create') }}" class="btn btn-success w-100 mb-3">
-                            <i data-feather="trending-up" class="align-middle me-1"></i> Add Income Source
-                        </a>
-                    </div>
+                    <a href="{{ route('wallets.create') }}" class="btn btn-success">
+                        <i data-feather="trending-up" class="icon-xs me-1"></i> Add Income Source
+                    </a>
                     @endif
                     @if($__accountId && $user->hasPermissionInAccount($__accountId, 'categories.create'))
-                    <div class="col-md-3">
-                        <a href="{{ route('categories.create') }}" class="btn btn-info w-100 mb-3">
-                            <i data-feather="tag" class="align-middle me-1"></i> Add Expense Type
-                        </a>
-                    </div>
+                    <a href="{{ route('categories.create') }}" class="btn btn-info">
+                        <i data-feather="tag" class="icon-xs me-1"></i> Add Expense Type
+                    </a>
                     @endif
-                    <div class="col-md-3">
-                        <a href="{{ route('reports.index') }}" class="btn btn-warning w-100 mb-3">
-                            <i data-feather="bar-chart-2" class="align-middle me-1"></i> View Reports
-                        </a>
-                    </div>
+                    <a href="{{ route('reports.index') }}" class="btn btn-warning">
+                        <i data-feather="bar-chart-2" class="icon-xs me-1"></i> View Reports
+                    </a>
+                    <a href="{{ route('budgets.index') }}" class="btn btn-outline-secondary">
+                        <i data-feather="target" class="icon-xs me-1"></i> Budgets
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- Close the x-data wrapper --}}
-</div>
+</div>{{-- /x-data --}}
 
 @push('scripts')
 <script>
 function dashboardWidgets() {
     var storageKey = 'ledgerly_dashboard_widgets';
     var defaults = {
-        alltime: true,
         monthly: true,
-        tables: true,
         ratio_chart: true,
         breakdown_charts: true,
+        tables: true,
+        alltime: false,
+        breakdown_pie: true,
         quick_actions: true
     };
     return {
         widgets: Object.assign({}, defaults),
         widgetList: [
+            { key: 'monthly', label: 'Key Metrics' },
+            { key: 'ratio_chart', label: 'Trend Charts' },
+            { key: 'breakdown_charts', label: 'Wallets & Top Expenses' },
+            { key: 'tables', label: 'Budgets & Recent Transactions' },
             { key: 'alltime', label: 'All-Time Summary' },
-            { key: 'monthly', label: 'This Month Summary' },
-            { key: 'tables', label: 'Income & Expense Tables' },
-            { key: 'ratio_chart', label: 'Ratio & Trend Charts' },
-            { key: 'breakdown_charts', label: 'Breakdown Charts' },
+            { key: 'breakdown_pie', label: 'Category & Source Charts' },
             { key: 'quick_actions', label: 'Quick Actions' }
         ],
         init: function() {
@@ -426,16 +494,14 @@ function dashboardWidgets() {
                     var parsed = JSON.parse(saved);
                     this.widgets = Object.assign({}, defaults, parsed);
                 }
-            } catch (e) { /* ignore parse errors */ }
+            } catch (e) {}
         },
         toggle: function(key) {
             this.widgets[key] = !this.widgets[key];
             this.save();
         },
         save: function() {
-            try {
-                localStorage.setItem(storageKey, JSON.stringify(this.widgets));
-            } catch (e) { /* ignore storage errors */ }
+            try { localStorage.setItem(storageKey, JSON.stringify(this.widgets)); } catch (e) {}
         },
         resetAll: function() {
             this.widgets = Object.assign({}, defaults);
@@ -451,141 +517,157 @@ document.addEventListener('DOMContentLoaded', function() {
         $hasWalletBalances = !empty($walletBalances) && count($walletBalances) > 0;
     @endphp
 
-    // Income vs Expense Donut Chart
+    var chartTheme = {
+        income: '#0ab39c',
+        expense: '#f06548',
+        net: '#405189',
+        info: '#299cdb',
+        warning: '#f7b84b',
+        grid: '#f1f1f1'
+    };
+
+    // ── Donut: Income vs Expense ──
     @if($summary['income'] > 0 || $summary['expense'] > 0)
-    var donutChartOptions = {
-        series: [{{ $summary['expense'] }}, {{ max(0, $summary['income'] - $summary['expense']) }}],
-        chart: {
-            type: 'donut',
-            height: 350,
-            toolbar: { show: false }
-        },
-        labels: ['Expense', 'Remaining'],
-        colors: ['#dc3545', '#28a745'],
+    new ApexCharts(document.querySelector("#income-expense-donut-chart"), {
+        series: [{{ $summary['income'] }}, {{ $summary['expense'] }}],
+        chart: { type: 'donut', height: 250 },
+        labels: ['Income', 'Expense'],
+        colors: [chartTheme.income, chartTheme.expense],
         plotOptions: {
             pie: {
                 donut: {
-                    size: '70%',
+                    size: '72%',
                     labels: {
                         show: true,
                         total: {
                             show: true,
-                            label: 'Total Income',
-                            fontSize: '16px',
+                            label: 'Net',
+                            fontSize: '14px',
                             fontWeight: 600,
-                            color: '#495057',
                             formatter: function() {
-                                return '{{ number_format($summary['income'], 2) }} {{ $currencyCode }}';
+                                return '{{ \App\Helpers\CurrencyHelper::format($summary["net"], $currencyCode) }}';
                             }
                         }
                     }
                 }
             }
         },
-        dataLabels: {
-            enabled: true,
-            formatter: function(val, opts) {
-                return opts.w.globals.series[opts.seriesIndex].toFixed(2) + ' {{ $currencyCode }}';
-            },
-            style: {
-                fontSize: '12px',
-                fontWeight: 600
-            }
-        },
-        legend: {
-            position: 'bottom',
-            horizontalAlign: 'center'
-        },
+        dataLabels: { enabled: false },
+        legend: { show: false },
         tooltip: {
-            y: {
-                formatter: function(val) {
-                    return val.toFixed(2) + ' {{ $currencyCode }}';
-                }
-            }
+            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
         }
-    };
-    var donutChart = new ApexCharts(document.querySelector("#income-expense-donut-chart"), donutChartOptions);
-    donutChart.render();
+    }).render();
     @else
-    document.getElementById('income-expense-donut-chart').innerHTML = '<p class="text-muted text-center mt-5">No financial data available this month</p>';
+    document.getElementById('income-expense-donut-chart').innerHTML = '<p class="text-muted text-center py-5">No data this month</p>';
     @endif
 
-    // Income vs Expense Line Chart
+    // ── Area Chart: 12-Month Trend ──
     @if($hasMonthlyData)
-    var lineChartOptions = {
+    new ApexCharts(document.querySelector("#income-expense-chart"), {
         series: [{
             name: 'Income',
             data: [{{ implode(',', array_column($monthlyData, 'income')) }}]
         }, {
             name: 'Expense',
             data: [{{ implode(',', array_column($monthlyData, 'expense')) }}]
+        }, {
+            name: 'Net',
+            data: [{{ implode(',', array_column($monthlyData, 'net')) }}]
         }],
         chart: {
-            height: 350,
-            type: 'line',
-            toolbar: { show: false }
+            height: 370,
+            type: 'area',
+            toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
+            fontFamily: 'inherit'
         },
-        colors: ['#28a745', '#dc3545'],
+        colors: [chartTheme.income, chartTheme.expense, chartTheme.net],
         dataLabels: { enabled: false },
-        stroke: { curve: 'smooth', width: 3 },
+        stroke: { curve: 'smooth', width: [2, 2, 2] },
+        fill: {
+            type: 'gradient',
+            gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.05 }
+        },
         xaxis: {
-            categories: [@foreach($monthlyData as $data)'{{ $data['month'] }}',@endforeach]
+            categories: [@foreach($monthlyData as $d)'{{ $d["month"] }}',@endforeach],
+            labels: { style: { fontSize: '11px' } }
         },
         yaxis: {
             labels: {
-                formatter: function(val) {
-                    return val.toFixed(2) + ' {{ $currencyCode }}';
+                formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
+            }
+        },
+        legend: { position: 'top', horizontalAlign: 'right' },
+        tooltip: {
+            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
+        },
+        grid: { borderColor: chartTheme.grid }
+    }).render();
+    @else
+    document.getElementById('income-expense-chart').innerHTML = '<p class="text-muted text-center py-5">No data available</p>';
+    @endif
+
+    // ── Donut: Expense Categories ──
+    @if($hasTopCategories)
+    new ApexCharts(document.querySelector("#expense-types-chart"), {
+        series: [{{ implode(',', array_column($topCategories, 'total')) }}],
+        chart: { type: 'donut', height: 300 },
+        labels: [@foreach($topCategories as $cat)'{{ $cat["category"] }}',@endforeach],
+        colors: ['#f06548', '#f7b84b', '#299cdb', '#0ab39c', '#405189', '#ab47bc'],
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '65%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'Total',
+                            formatter: function(w) {
+                                return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0).toLocaleString() + ' {{ $currencyCode }}';
+                            }
+                        }
+                    }
                 }
             }
         },
-        legend: { position: 'top' }
-    };
-    var lineChart = new ApexCharts(document.querySelector("#income-expense-chart"), lineChartOptions);
-    lineChart.render();
+        dataLabels: { enabled: false },
+        legend: { position: 'bottom' },
+        tooltip: {
+            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
+        }
+    }).render();
     @else
-    document.getElementById('income-expense-chart').innerHTML = '<p class="text-muted text-center mt-5">No data available for chart</p>';
+    document.getElementById('expense-types-chart').innerHTML = '<p class="text-muted text-center py-5">No expense data</p>';
     @endif
 
-    // Expense Types Pie Chart
-    @if($hasTopCategories)
-    var pieChartOptions = {
-        series: [{{ implode(',', array_column($topCategories, 'total')) }}],
-        chart: { type: 'pie', height: 300 },
-        labels: [@foreach($topCategories as $cat)'{{ $cat['category'] }}',@endforeach],
-        colors: ['#f06292', '#4fc3f7', '#ffa726', '#66bb6a', '#ef5350', '#ab47bc'],
-        legend: { position: 'bottom' }
-    };
-    var pieChart = new ApexCharts(document.querySelector("#expense-types-chart"), pieChartOptions);
-    pieChart.render();
-    @else
-    document.getElementById('expense-types-chart').innerHTML = '<p class="text-muted text-center mt-5">No expense data available</p>';
-    @endif
-
-    // Income Sources Bar Chart
+    // ── Bar Chart: Wallet Balances ──
     @if($hasWalletBalances)
-    var barChartOptions = {
+    new ApexCharts(document.querySelector("#income-sources-chart"), {
         series: [{
             name: 'Balance',
             data: [{{ implode(',', array_column($walletBalances, 'balance')) }}]
         }],
         chart: { type: 'bar', height: 300, toolbar: { show: false } },
-        colors: ['#28a745'],
+        colors: [chartTheme.income],
         xaxis: {
-            categories: [@foreach($walletBalances as $wallet)'{{ $wallet['wallet'] }}',@endforeach]
+            categories: [@foreach($walletBalances as $w)'{{ $w["wallet"] }}',@endforeach],
+            labels: { style: { fontSize: '11px' } }
         },
         yaxis: {
             labels: {
-                formatter: function(val) {
-                    return val.toFixed(2) + ' {{ $currencyCode }}';
-                }
+                formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
             }
         },
-        plotOptions: { bar: { horizontal: false, columnWidth: '55%' } }
-    };
-    var barChart = new ApexCharts(document.querySelector("#income-sources-chart"), barChartOptions);
-    barChart.render();
+        plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } },
+        dataLabels: { enabled: false },
+        tooltip: {
+            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
+        },
+        grid: { borderColor: chartTheme.grid }
+    }).render();
     @else
-    document.getElementById('income-sources-chart').innerHTML = '<p class="text-muted text-center mt-5">No income source data available</p>';
+    document.getElementById('income-sources-chart').innerHTML = '<p class="text-muted text-center py-5">No wallet data</p>';
     @endif
 });
 </script>

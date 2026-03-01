@@ -69,6 +69,15 @@ class DashboardController extends Controller
                 $timezone
             );
 
+            // Last month for trend comparison
+            $lastMonth = $now->copy()->subMonth();
+            $lastMonthSummary = $this->reportService->getMonthlySummary(
+                $accountId,
+                $lastMonth->month,
+                $lastMonth->year,
+                $timezone
+            );
+
             $allTimeSummary = $this->reportService->getAllTimeSummary($accountId);
 
             $topCategories = $this->reportService->getTopCategories(
@@ -87,10 +96,35 @@ class DashboardController extends Controller
 
             $last12Months = $this->reportService->getMonthlyTrend($accountId, 12, $timezone);
 
+            // Budget progress
+            $budgetProgress = $this->reportService->getBudgetProgress($accountId, $timezone);
+
+            // Recent transactions
+            $recentTransactions = \App\Models\Transaction::forAccount($accountId)
+                ->with(['wallet', 'category'])
+                ->orderByDesc('occurred_at')
+                ->limit(5)
+                ->get();
+
+            // Transaction counts for comparison
+            $monthStart = $now->copy()->startOfMonth()->toDateString();
+            $monthEnd = $now->copy()->endOfMonth()->toDateString();
+            $transactionCount = \App\Models\Transaction::forAccount($accountId)
+                ->whereBetween('occurred_at', [$monthStart, $monthEnd])
+                ->count();
+            $lastMonthTxCount = \App\Models\Transaction::forAccount($accountId)
+                ->whereBetween('occurred_at', [
+                    $lastMonth->copy()->startOfMonth()->toDateString(),
+                    $lastMonth->copy()->endOfMonth()->toDateString(),
+                ])
+                ->count();
+
             return compact(
-                'summary', 'allTimeSummary', 'topCategories',
+                'summary', 'lastMonthSummary', 'allTimeSummary', 'topCategories',
                 'walletBalances', 'totalBalance', 'last12Months',
-                'incomeWalletTotals', 'expenseCategoryTotals'
+                'incomeWalletTotals', 'expenseCategoryTotals',
+                'budgetProgress', 'recentTransactions',
+                'transactionCount', 'lastMonthTxCount'
             );
         });
 

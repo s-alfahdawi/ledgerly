@@ -30,7 +30,7 @@ class AccountContext
             $id = Session::get(self::SESSION_KEY);
         }
 
-        return $id;
+        return $id ? (int) $id : null;
     }
 
     public function account(): ?Account
