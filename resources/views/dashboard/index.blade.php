@@ -366,6 +366,41 @@
 </div>
 
 {{-- ============================================================== --}}
+{{-- QUICK ACTIONS --}}
+{{-- ============================================================== --}}
+<div class="row" x-show="widgets.quick_actions" x-transition>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-3">Quick Actions</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('transactions.create') }}" class="btn btn-primary">
+                        <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
+                    </a>
+                    @php $user = auth()->user(); @endphp
+                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'wallets.create'))
+                    <a href="{{ route('wallets.create') }}" class="btn btn-success">
+                        <i data-feather="trending-up" class="icon-xs me-1"></i> Add Income Source
+                    </a>
+                    @endif
+                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'categories.create'))
+                    <a href="{{ route('categories.create') }}" class="btn btn-info">
+                        <i data-feather="tag" class="icon-xs me-1"></i> Add Expense Type
+                    </a>
+                    @endif
+                    <a href="{{ route('reports.index') }}" class="btn btn-warning">
+                        <i data-feather="bar-chart-2" class="icon-xs me-1"></i> View Reports
+                    </a>
+                    <a href="{{ route('budgets.index') }}" class="btn btn-outline-secondary">
+                        <i data-feather="target" class="icon-xs me-1"></i> Budgets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ============================================================== --}}
 {{-- ALL-TIME SUMMARY --}}
 {{-- ============================================================== --}}
 <div x-show="widgets.alltime" x-transition>
@@ -426,41 +461,6 @@
     </div>
 </div>
 
-{{-- ============================================================== --}}
-{{-- QUICK ACTIONS --}}
-{{-- ============================================================== --}}
-<div class="row" x-show="widgets.quick_actions" x-transition>
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h4 class="card-title mb-3">Quick Actions</h4>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ route('transactions.create') }}" class="btn btn-primary">
-                        <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
-                    </a>
-                    @php $user = auth()->user(); @endphp
-                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'wallets.create'))
-                    <a href="{{ route('wallets.create') }}" class="btn btn-success">
-                        <i data-feather="trending-up" class="icon-xs me-1"></i> Add Income Source
-                    </a>
-                    @endif
-                    @if($__accountId && $user->hasPermissionInAccount($__accountId, 'categories.create'))
-                    <a href="{{ route('categories.create') }}" class="btn btn-info">
-                        <i data-feather="tag" class="icon-xs me-1"></i> Add Expense Type
-                    </a>
-                    @endif
-                    <a href="{{ route('reports.index') }}" class="btn btn-warning">
-                        <i data-feather="bar-chart-2" class="icon-xs me-1"></i> View Reports
-                    </a>
-                    <a href="{{ route('budgets.index') }}" class="btn btn-outline-secondary">
-                        <i data-feather="target" class="icon-xs me-1"></i> Budgets
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 </div>{{-- /x-data --}}
 
 @push('scripts')
@@ -483,9 +483,9 @@ function dashboardWidgets() {
             { key: 'ratio_chart', label: 'Trend Charts' },
             { key: 'breakdown_charts', label: 'Wallets & Top Expenses' },
             { key: 'tables', label: 'Budgets & Recent Transactions' },
+            { key: 'quick_actions', label: 'Quick Actions' },
             { key: 'alltime', label: 'All-Time Summary' },
-            { key: 'breakdown_pie', label: 'Category & Source Charts' },
-            { key: 'quick_actions', label: 'Quick Actions' }
+            { key: 'breakdown_pie', label: 'Category & Source Charts' }
         ],
         init: function() {
             try {
@@ -495,10 +495,21 @@ function dashboardWidgets() {
                     this.widgets = Object.assign({}, defaults, parsed);
                 }
             } catch (e) {}
+            // Initialize charts after Alpine has rendered the DOM
+            this.$nextTick(function() {
+                window._initDashboardCharts();
+            });
         },
         toggle: function(key) {
             this.widgets[key] = !this.widgets[key];
             this.save();
+            // Re-render charts when toggling visibility (ApexCharts needs resize)
+            if (this.widgets[key]) {
+                var self = this;
+                this.$nextTick(function() {
+                    window.dispatchEvent(new Event('resize'));
+                });
+            }
         },
         save: function() {
             try { localStorage.setItem(storageKey, JSON.stringify(this.widgets)); } catch (e) {}
@@ -506,11 +517,14 @@ function dashboardWidgets() {
         resetAll: function() {
             this.widgets = Object.assign({}, defaults);
             this.save();
+            this.$nextTick(function() {
+                window.dispatchEvent(new Event('resize'));
+            });
         }
     };
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+window._initDashboardCharts = function() {
     @php
         $hasMonthlyData = isset($monthlyData) && !empty($monthlyData);
         $hasTopCategories = !empty($topCategories) && count($topCategories) > 0;
@@ -527,149 +541,177 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // ── Donut: Income vs Expense ──
+    try {
     @if($summary['income'] > 0 || $summary['expense'] > 0)
-    new ApexCharts(document.querySelector("#income-expense-donut-chart"), {
-        series: [{{ $summary['income'] }}, {{ $summary['expense'] }}],
-        chart: { type: 'donut', height: 250 },
-        labels: ['Income', 'Expense'],
-        colors: [chartTheme.income, chartTheme.expense],
-        plotOptions: {
-            pie: {
-                donut: {
-                    size: '72%',
-                    labels: {
-                        show: true,
-                        total: {
+    var donutEl = document.querySelector("#income-expense-donut-chart");
+    if (donutEl) {
+        donutEl.innerHTML = '';
+        new ApexCharts(donutEl, {
+            series: [{{ $summary['income'] }}, {{ $summary['expense'] }}],
+            chart: { type: 'donut', height: 250 },
+            labels: ['Income', 'Expense'],
+            colors: [chartTheme.income, chartTheme.expense],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '72%',
+                        labels: {
                             show: true,
-                            label: 'Net',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            formatter: function() {
-                                return '{{ \App\Helpers\CurrencyHelper::format($summary["net"], $currencyCode) }}';
+                            total: {
+                                show: true,
+                                label: 'Net',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                formatter: function() {
+                                    return '{{ \App\Helpers\CurrencyHelper::format($summary["net"], $currencyCode) }}';
+                                }
                             }
                         }
                     }
                 }
+            },
+            dataLabels: { enabled: false },
+            legend: { show: false },
+            tooltip: {
+                y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
             }
-        },
-        dataLabels: { enabled: false },
-        legend: { show: false },
-        tooltip: {
-            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
-        }
-    }).render();
+        }).render();
+    }
     @else
-    document.getElementById('income-expense-donut-chart').innerHTML = '<p class="text-muted text-center py-5">No data this month</p>';
+    var donutEl = document.getElementById('income-expense-donut-chart');
+    if (donutEl) donutEl.innerHTML = '<p class="text-muted text-center py-5">No data this month</p>';
     @endif
+    } catch(e) { console.warn('Donut chart error:', e); }
 
     // ── Area Chart: 12-Month Trend ──
+    try {
     @if($hasMonthlyData)
-    new ApexCharts(document.querySelector("#income-expense-chart"), {
-        series: [{
-            name: 'Income',
-            data: [{{ implode(',', array_column($monthlyData, 'income')) }}]
-        }, {
-            name: 'Expense',
-            data: [{{ implode(',', array_column($monthlyData, 'expense')) }}]
-        }, {
-            name: 'Net',
-            data: [{{ implode(',', array_column($monthlyData, 'net')) }}]
-        }],
-        chart: {
-            height: 370,
-            type: 'area',
-            toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
-            fontFamily: 'inherit'
-        },
-        colors: [chartTheme.income, chartTheme.expense, chartTheme.net],
-        dataLabels: { enabled: false },
-        stroke: { curve: 'smooth', width: [2, 2, 2] },
-        fill: {
-            type: 'gradient',
-            gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.05 }
-        },
-        xaxis: {
-            categories: [@foreach($monthlyData as $d)'{{ $d["month"] }}',@endforeach],
-            labels: { style: { fontSize: '11px' } }
-        },
-        yaxis: {
-            labels: {
-                formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
-            }
-        },
-        legend: { position: 'top', horizontalAlign: 'right' },
-        tooltip: {
-            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
-        },
-        grid: { borderColor: chartTheme.grid }
-    }).render();
+    var areaEl = document.querySelector("#income-expense-chart");
+    if (areaEl) {
+        areaEl.innerHTML = '';
+        new ApexCharts(areaEl, {
+            series: [{
+                name: 'Income',
+                data: [{{ implode(',', array_column($monthlyData, 'income')) }}]
+            }, {
+                name: 'Expense',
+                data: [{{ implode(',', array_column($monthlyData, 'expense')) }}]
+            }, {
+                name: 'Net',
+                data: [{{ implode(',', array_column($monthlyData, 'net')) }}]
+            }],
+            chart: {
+                height: 370,
+                type: 'area',
+                toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
+                fontFamily: 'inherit'
+            },
+            colors: [chartTheme.income, chartTheme.expense, chartTheme.net],
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: [2, 2, 2] },
+            fill: {
+                type: 'gradient',
+                gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.05 }
+            },
+            xaxis: {
+                categories: [@foreach($monthlyData as $d)'{{ $d["month"] }}',@endforeach],
+                labels: { style: { fontSize: '11px' } }
+            },
+            yaxis: {
+                labels: {
+                    formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
+                }
+            },
+            legend: { position: 'top', horizontalAlign: 'right' },
+            tooltip: {
+                y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
+            },
+            grid: { borderColor: chartTheme.grid }
+        }).render();
+    }
     @else
-    document.getElementById('income-expense-chart').innerHTML = '<p class="text-muted text-center py-5">No data available</p>';
+    var areaEl = document.getElementById('income-expense-chart');
+    if (areaEl) areaEl.innerHTML = '<p class="text-muted text-center py-5">No data available</p>';
     @endif
+    } catch(e) { console.warn('Area chart error:', e); }
 
     // ── Donut: Expense Categories ──
+    try {
     @if($hasTopCategories)
-    new ApexCharts(document.querySelector("#expense-types-chart"), {
-        series: [{{ implode(',', array_column($topCategories, 'total')) }}],
-        chart: { type: 'donut', height: 300 },
-        labels: [@foreach($topCategories as $cat)'{{ $cat["category"] }}',@endforeach],
-        colors: ['#f06548', '#f7b84b', '#299cdb', '#0ab39c', '#405189', '#ab47bc'],
-        plotOptions: {
-            pie: {
-                donut: {
-                    size: '65%',
-                    labels: {
-                        show: true,
-                        total: {
+    var expenseEl = document.querySelector("#expense-types-chart");
+    if (expenseEl) {
+        expenseEl.innerHTML = '';
+        new ApexCharts(expenseEl, {
+            series: [{{ implode(',', array_column($topCategories, 'total')) }}],
+            chart: { type: 'donut', height: 300 },
+            labels: [@foreach($topCategories as $cat)'{{ addslashes($cat["category"]) }}',@endforeach],
+            colors: ['#f06548', '#f7b84b', '#299cdb', '#0ab39c', '#405189', '#ab47bc'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
                             show: true,
-                            label: 'Total',
-                            formatter: function(w) {
-                                return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0).toLocaleString() + ' {{ $currencyCode }}';
+                            total: {
+                                show: true,
+                                label: 'Total',
+                                formatter: function(w) {
+                                    return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0).toLocaleString() + ' {{ $currencyCode }}';
+                                }
                             }
                         }
                     }
                 }
+            },
+            dataLabels: { enabled: false },
+            legend: { position: 'bottom' },
+            tooltip: {
+                y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
             }
-        },
-        dataLabels: { enabled: false },
-        legend: { position: 'bottom' },
-        tooltip: {
-            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
-        }
-    }).render();
+        }).render();
+    }
     @else
-    document.getElementById('expense-types-chart').innerHTML = '<p class="text-muted text-center py-5">No expense data</p>';
+    var expenseEl = document.getElementById('expense-types-chart');
+    if (expenseEl) expenseEl.innerHTML = '<p class="text-muted text-center py-5">No expense data</p>';
     @endif
+    } catch(e) { console.warn('Expense chart error:', e); }
 
-    // ── Bar Chart: Wallet Balances ──
+    // ── Bar Chart: Wallet/Income Source Balances ──
+    try {
     @if($hasWalletBalances)
-    new ApexCharts(document.querySelector("#income-sources-chart"), {
-        series: [{
-            name: 'Balance',
-            data: [{{ implode(',', array_column($walletBalances, 'balance')) }}]
-        }],
-        chart: { type: 'bar', height: 300, toolbar: { show: false } },
-        colors: [chartTheme.income],
-        xaxis: {
-            categories: [@foreach($walletBalances as $w)'{{ $w["wallet"] }}',@endforeach],
-            labels: { style: { fontSize: '11px' } }
-        },
-        yaxis: {
-            labels: {
-                formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
-            }
-        },
-        plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } },
-        dataLabels: { enabled: false },
-        tooltip: {
-            y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
-        },
-        grid: { borderColor: chartTheme.grid }
-    }).render();
+    var walletEl = document.querySelector("#income-sources-chart");
+    if (walletEl) {
+        walletEl.innerHTML = '';
+        new ApexCharts(walletEl, {
+            series: [{
+                name: 'Balance',
+                data: [{{ implode(',', array_column($walletBalances, 'balance')) }}]
+            }],
+            chart: { type: 'bar', height: 300, toolbar: { show: false } },
+            colors: [chartTheme.income],
+            xaxis: {
+                categories: [@foreach($walletBalances as $w)'{{ addslashes($w["wallet"]) }}',@endforeach],
+                labels: { style: { fontSize: '11px' } }
+            },
+            yaxis: {
+                labels: {
+                    formatter: function(val) { return val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : val >= 1000 ? (val/1000).toFixed(1) + 'K' : val.toFixed(0); }
+                }
+            },
+            plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } },
+            dataLabels: { enabled: false },
+            tooltip: {
+                y: { formatter: function(val) { return val.toLocaleString() + ' {{ $currencyCode }}'; } }
+            },
+            grid: { borderColor: chartTheme.grid }
+        }).render();
+    }
     @else
-    document.getElementById('income-sources-chart').innerHTML = '<p class="text-muted text-center py-5">No wallet data</p>';
+    var walletEl = document.getElementById('income-sources-chart');
+    if (walletEl) walletEl.innerHTML = '<p class="text-muted text-center py-5">No wallet data</p>';
     @endif
-});
+    } catch(e) { console.warn('Wallet chart error:', e); }
+};
 </script>
 @endpush
 @endsection

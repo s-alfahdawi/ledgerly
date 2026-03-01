@@ -33,6 +33,8 @@
     <link href="{{ asset('assets/minia/libs/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet" type="text/css" />
     <!-- Mobile bottom nav -->
     <link href="{{ asset('css/mobile-nav.css') }}" rel="stylesheet" type="text/css" />
+    <!-- Alpine.js cloak: hide elements until Alpine processes them -->
+    <style>[x-cloak] { display: none !important; }</style>
 
 </head>
 
@@ -120,10 +122,7 @@
     <!-- Apexcharts -->
     <script src="{{ asset('assets/minia/libs/apexcharts/apexcharts.min.js') }}"></script>
 
-    <!-- dashboard init (only load on dashboard page) -->
-    @if(request()->routeIs('dashboard'))
-    <script src="{{ asset('assets/minia/js/pages/dashboard.init.js') }}"></script>
-    @endif
+    {{-- dashboard.init.js removed: uses Minia template's demo elements that don't exist in our custom dashboard --}}
 
     <script src="{{ asset('assets/minia/js/app.js') }}"></script>
 
@@ -174,6 +173,9 @@
     <script src="{{ asset('js/keyboard-shortcuts.js') }}"></script>
 
     @stack('scripts')
+
+    <!-- Alpine.js (via Vite build) - must load AFTER page scripts that define x-data functions -->
+    <script src="{{ asset('build/assets/app-HJ2J-Dyr.js') }}"></script>
 
 </body>
 
