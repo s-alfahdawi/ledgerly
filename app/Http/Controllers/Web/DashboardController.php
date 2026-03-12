@@ -96,6 +96,28 @@ class DashboardController extends Controller
 
             $last12Months = $this->reportService->getMonthlyTrend($accountId, 12, $timezone);
 
+            // Extended analytics
+            $ytdSummary          = $this->reportService->getYearToDateSummary($accountId, $now->year, $timezone);
+            $avgMonthlySummary   = $this->reportService->getAverageMonthlySummary($accountId, $timezone);
+            $topIncomeCategories = $this->reportService->getTopIncomeCategories(
+                $accountId,
+                5,
+                $now->copy()->startOfMonth()->toDateString(),
+                $now->copy()->endOfMonth()->toDateString(),
+                $timezone
+            );
+            $topIncomeWallets = $this->reportService->getTopIncomeWallets(
+                $accountId,
+                5,
+                $now->copy()->startOfMonth()->toDateString(),
+                $now->copy()->endOfMonth()->toDateString(),
+                $timezone
+            );
+            $dailyTrend      = $this->reportService->getDailyTrendCurrentMonth($accountId, $timezone);
+            $bestWorstMonths = $this->reportService->getBestAndWorstMonths($last12Months);
+            $txCounts        = $this->reportService->getAllTimeTransactionCounts($accountId);
+            $largestTxns     = $this->reportService->getLargestTransactions($accountId);
+
             // Budget progress
             $budgetProgress = $this->reportService->getBudgetProgress($accountId, $timezone);
 
@@ -124,7 +146,9 @@ class DashboardController extends Controller
                 'walletBalances', 'totalBalance', 'last12Months',
                 'incomeWalletTotals', 'expenseCategoryTotals',
                 'budgetProgress', 'recentTransactions',
-                'transactionCount', 'lastMonthTxCount'
+                'transactionCount', 'lastMonthTxCount',
+                'ytdSummary', 'avgMonthlySummary', 'topIncomeCategories', 'topIncomeWallets',
+                'dailyTrend', 'bestWorstMonths', 'txCounts', 'largestTxns'
             );
         });
 

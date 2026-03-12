@@ -104,8 +104,9 @@ class ReportService
             ->get()
             ->map(function ($item) {
                 return [
-                    'category' => $item->category?->name ?? 'Uncategorized',
-                    'total' => (float) $item->total,
+                    'category' => $item->category?->name  ?? 'Uncategorized',
+                    'color'    => $item->category?->color ?? '#f06548',
+                    'total'    => (float) $item->total,
                 ];
             })
             ->toArray();
@@ -145,9 +146,10 @@ class ReportService
             ->get()
             ->map(function ($item) {
                 return [
-                    'category' => $item->category?->name ?? 'Uncategorized',
-                    'total' => (float) $item->total,
-                    'transaction_count' => (int) $item->transaction_count,
+                    'category'          => $item->category?->name  ?? 'Uncategorized',
+                    'color'             => $item->category?->color ?? '#405189',
+                    'total'             => (float) $item->total,
+                    'transaction_count' => (int)   $item->transaction_count,
                 ];
             })
             ->toArray();
@@ -257,6 +259,244 @@ class ReportService
         }
 
         return $result;
+    }
+
+    /**
+     * Get year-to-date income, expense, and net for the given year.
+     */
+    public function getYearToDateSummary(int $accountId, int $year, string $timezone = 'UTC'): array
+    {
+        $now = now($timezone);
+        $period = ReportPeriod::fromDates(
+            $now->copy()->startOfYear()->toDateString(),
+            $now->copy()->toDateString(),
+            $timezone
+        );
+
+        $income = Transaction::forAccount($accountId)
+            ->byType('income')
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->sum('amount');
+
+        $expense = Transaction::forAccount($accountId)
+            ->byType('expense')
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->sum('amount');
+
+        return [
+            'income'  => (float) $income,
+            'expense' => (float) $expense,
+            'net'     => (float) $income - (float) $expense,
+        ];
+    }
+
+    /**
+     * Get average monthly income and expense across all calendar months with data.
+     * Ignores empty months to avoid deflating averages.
+     */
+    public function getAverageMonthlySummary(int $accountId, string $timezone = 'UTC'): array
+    {
+        $driver = DB::getDriverName();
+        $monthExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m', occurred_at)"
+            : "DATE_FORMAT(occurred_at, '%Y-%m')";
+
+        $rows = Transaction::forAccount($accountId)
+            ->whereIn('type', ['income', 'expense'])
+            ->select(
+                DB::raw("{$monthExpr} as month_key"),
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense")
+            )
+            ->groupBy('month_key')
+            ->get();
+
+        $count = $rows->count();
+        if ($count === 0) {
+            return ['income' => 0.0, 'expense' => 0.0];
+        }
+
+        $totalIncome  = $rows->sum(fn ($r) => (float) $r->income);
+        $totalExpense = $rows->sum(fn ($r) => (float) $r->expense);
+
+        return [
+            'income'  => round($totalIncome / $count, 2),
+            'expense' => round($totalExpense / $count, 2),
+        ];
+    }
+
+    /**
+     * Get top N income categories by amount in a given date range.
+     */
+    public function getTopIncomeCategories(int $accountId, int $limit, string $startDate, string $endDate, string $timezone = 'UTC'): array
+    {
+        $period = ReportPeriod::fromDates($startDate, $endDate, $timezone);
+
+        return Transaction::forAccount($accountId)
+            ->byType('income')
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->select('category_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('category_id')
+            ->orderByDesc('total')
+            ->limit($limit)
+            ->with('category')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'category' => $item->category?->name  ?? 'Uncategorized',
+                    'color'    => $item->category?->color ?? '#0ab39c',
+                    'total'    => (float) $item->total,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Get top N income sources (wallets) by amount in a given date range.
+     * Wallets are the natural income dimension — more reliable than categories
+     * since income transactions frequently have no category assigned.
+     */
+    public function getTopIncomeWallets(int $accountId, int $limit, string $startDate, string $endDate, string $timezone = 'UTC'): array
+    {
+        $period = ReportPeriod::fromDates($startDate, $endDate, $timezone);
+
+        return Transaction::forAccount($accountId)
+            ->byType('income')
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->select('wallet_id', DB::raw('SUM(amount) as total'))
+            ->groupBy('wallet_id')
+            ->orderByDesc('total')
+            ->limit($limit)
+            ->with('wallet')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'label' => $item->wallet?->name ?? 'Unknown Source',
+                    'total' => (float) $item->total,
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Get daily income and expense for every calendar day in the current month.
+     * Fills zeros for days with no transactions.
+     */
+    public function getDailyTrendCurrentMonth(int $accountId, string $timezone = 'UTC'): array
+    {
+        $now    = now($timezone);
+        $period = ReportPeriod::forMonth($now->month, $now->year, $timezone);
+
+        $driver  = DB::getDriverName();
+        $dayExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m-%d', occurred_at)"
+            : "DATE_FORMAT(occurred_at, '%Y-%m-%d')";
+
+        $rows = Transaction::forAccount($accountId)
+            ->whereIn('type', ['income', 'expense'])
+            ->whereBetween('occurred_at', [$period->startDateString(), $period->endDateString()])
+            ->select(
+                DB::raw("{$dayExpr} as day_key"),
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense")
+            )
+            ->groupBy('day_key')
+            ->get()
+            ->keyBy('day_key');
+
+        $result    = [];
+        $daysInMonth = $now->copy()->endOfMonth()->day;
+
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date    = $now->copy()->setDay($d);
+            $key     = $date->format('Y-m-d');
+            $income  = $rows->has($key) ? (float) $rows->get($key)->income  : 0.0;
+            $expense = $rows->has($key) ? (float) $rows->get($key)->expense : 0.0;
+
+            $result[] = [
+                'day'     => $date->format('M d'),
+                'date'    => $key,
+                'income'  => $income,
+                'expense' => $expense,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Find the best (highest net) and worst (lowest net) months from a trend array.
+     * Accepts the result of getMonthlyTrend() — no extra DB query needed.
+     */
+    public function getBestAndWorstMonths(array $monthlyTrend): array
+    {
+        // Filter to months that have actual data
+        $active = array_values(array_filter(
+            $monthlyTrend,
+            fn ($m) => $m['income'] > 0 || $m['expense'] > 0
+        ));
+
+        if (empty($active)) {
+            return ['best' => null, 'worst' => null];
+        }
+
+        usort($active, fn ($a, $b) => $b['net'] <=> $a['net']);
+
+        return [
+            'best'  => $active[0],
+            'worst' => $active[count($active) - 1],
+        ];
+    }
+
+    /**
+     * Get total count of income and expense transactions for an account (all time).
+     */
+    public function getAllTimeTransactionCounts(int $accountId): array
+    {
+        $rows = Transaction::forAccount($accountId)
+            ->whereIn('type', ['income', 'expense'])
+            ->select('type', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('type')
+            ->get()
+            ->keyBy('type');
+
+        return [
+            'income_count'  => (int) ($rows->get('income')?->cnt  ?? 0),
+            'expense_count' => (int) ($rows->get('expense')?->cnt ?? 0),
+        ];
+    }
+
+    /**
+     * Get the single largest income and expense transaction of all time.
+     */
+    public function getLargestTransactions(int $accountId): array
+    {
+        $largestIncome = Transaction::forAccount($accountId)
+            ->byType('income')
+            ->with(['category', 'wallet'])
+            ->orderByDesc('amount')
+            ->first();
+
+        $largestExpense = Transaction::forAccount($accountId)
+            ->byType('expense')
+            ->with(['category', 'wallet'])
+            ->orderByDesc('amount')
+            ->first();
+
+        return [
+            'largest_income' => $largestIncome ? [
+                'amount'      => (float) $largestIncome->amount,
+                'category'    => $largestIncome->category?->name ?? 'Uncategorized',
+                'wallet'      => $largestIncome->wallet?->name   ?? 'Unknown',
+                'occurred_at' => $largestIncome->occurred_at->format('M d, Y'),
+            ] : null,
+            'largest_expense' => $largestExpense ? [
+                'amount'      => (float) $largestExpense->amount,
+                'category'    => $largestExpense->category?->name ?? 'Uncategorized',
+                'wallet'      => $largestExpense->wallet?->name   ?? 'Unknown',
+                'occurred_at' => $largestExpense->occurred_at->format('M d, Y'),
+            ] : null,
+        ];
     }
 
     /**
