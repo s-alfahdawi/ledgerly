@@ -175,7 +175,7 @@
     @stack('scripts')
 
     <!-- Alpine.js (via Vite build) - must load AFTER page scripts that define x-data functions -->
-    <script src="{{ asset('build/assets/app-HJ2J-Dyr.js') }}"></script>
+    @vite('resources/js/app.js')
 
 </body>
 
