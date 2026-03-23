@@ -40,11 +40,11 @@
                 <a href="{{ route('transactions.create') }}" class="btn btn-primary btn-sm">
                     <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
                 </a>
-                <div class="dropdown d-inline-block" style="position: relative; z-index: 1030;">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <div class="d-inline-block" style="position: relative; z-index: 1030;" x-data="{ open: false }">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" @click="open = !open">
                         <i data-feather="sliders" class="icon-xs me-1"></i> Customize
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 260px;">
+                    <div class="dropdown-menu dropdown-menu-end p-3" :class="{ show: open }" @click.outside="open = false" style="min-width: 260px;" x-show="open" x-transition>
                         <h6 class="dropdown-header px-0">Show / Hide Widgets</h6>
                         <template x-for="widget in widgetList" :key="widget.key">
                             <div class="form-check form-switch mb-2">
