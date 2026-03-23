@@ -40,7 +40,7 @@
                 <a href="{{ route('transactions.create') }}" class="btn btn-primary btn-sm">
                     <i data-feather="plus" class="icon-xs me-1"></i> New Transaction
                 </a>
-                <div class="dropdown d-inline-block">
+                <div class="dropdown d-inline-block" style="position: relative; z-index: 1030;">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                         <i data-feather="sliders" class="icon-xs me-1"></i> Customize
                     </button>
@@ -918,7 +918,7 @@ function dashboardWidgets() {
         comparison: true,
         insights: true,
         quick_actions: true,
-        alltime: false,
+        alltime: true,
         monthly_table: false,
         breakdown_pie: true
     };
