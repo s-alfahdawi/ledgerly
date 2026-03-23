@@ -1174,7 +1174,7 @@ window._initDashboardCharts = function() {
             series: [{ name: 'Net', data: [{{ implode(',', array_column($monthlyData, 'net')) }}] }],
             chart: { type: 'bar', height: 340, toolbar: { show: false }, fontFamily: 'inherit' },
             plotOptions: { bar: { distributed: true, borderRadius: 4, columnWidth: '55%' } },
-            colors: [{{ implode(',', array_map(fn($d) => "'" . ($d['net'] >= 0 ? '#0ab39c' : '#f06548') . "'", $monthlyData)) }}],
+            colors: [{!! implode(',', array_map(fn($d) => "'" . ($d['net'] >= 0 ? '#0ab39c' : '#f06548') . "'", $monthlyData)) !!}],
             dataLabels: { enabled: false },
             legend: { show: false },
             xaxis: {
