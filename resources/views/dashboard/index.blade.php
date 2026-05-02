@@ -953,12 +953,6 @@
                                 <th role="button" @click="sortBy('type')">
                                     Type <span class="text-muted small" x-text="indicator('type')"></span>
                                 </th>
-                                <th class="text-end" role="button" @click="sortBy('opening_balance')">
-                                    Opening <span class="text-muted small" x-text="indicator('opening_balance')"></span>
-                                </th>
-                                <th class="text-end" role="button" @click="sortBy('income')">
-                                    Income <span class="text-muted small" x-text="indicator('income')"></span>
-                                </th>
                                 <th class="text-end" role="button" @click="sortBy('balance')">
                                     Balance <span class="text-muted small" x-text="indicator('balance')"></span>
                                 </th>
@@ -972,8 +966,6 @@
                                 <tr>
                                     <td class="ps-3 fw-medium" x-text="row.name"></td>
                                     <td><span class="badge bg-light text-muted text-capitalize" x-text="row.type"></span></td>
-                                    <td class="text-end" x-text="formatMoney(row.opening_balance)"></td>
-                                    <td class="text-end text-success" x-text="formatMoney(row.income)"></td>
                                     <td class="text-end fw-semibold"
                                         :class="row.balance >= 0 ? 'text-success' : 'text-danger'"
                                         x-text="formatMoney(row.balance)"></td>
@@ -985,8 +977,6 @@
                             <tr class="fw-semibold">
                                 <td class="ps-3">Total</td>
                                 <td></td>
-                                <td class="text-end" x-text="formatMoney(totalOf('opening_balance'))"></td>
-                                <td class="text-end text-success" x-text="formatMoney(totalOf('income'))"></td>
                                 <td class="text-end" :class="totalOf('balance') >= 0 ? 'text-success' : 'text-danger'" x-text="formatMoney(totalOf('balance'))"></td>
                                 <td class="text-end pe-3" x-text="totalOf('transaction_count')"></td>
                             </tr>
@@ -1031,14 +1021,8 @@
                                 <th role="button" @click="sortBy('type')">
                                     Type <span class="text-muted small" x-text="indicator('type')"></span>
                                 </th>
-                                <th class="text-end" role="button" @click="sortBy('income')">
-                                    Income <span class="text-muted small" x-text="indicator('income')"></span>
-                                </th>
-                                <th class="text-end" role="button" @click="sortBy('expense')">
-                                    Expense <span class="text-muted small" x-text="indicator('expense')"></span>
-                                </th>
                                 <th class="text-end" role="button" @click="sortBy('total')">
-                                    Total <span class="text-muted small" x-text="indicator('total')"></span>
+                                    Balance <span class="text-muted small" x-text="indicator('total')"></span>
                                 </th>
                                 <th class="text-end pe-3" role="button" @click="sortBy('transaction_count')">
                                     Txns <span class="text-muted small" x-text="indicator('transaction_count')"></span>
@@ -1057,8 +1041,6 @@
                                               :class="row.type === 'income' ? 'bg-success-subtle text-success' : (row.type === 'expense' ? 'bg-danger-subtle text-danger' : 'bg-light text-muted')"
                                               x-text="row.type"></span>
                                     </td>
-                                    <td class="text-end text-success" x-text="formatMoney(row.income)"></td>
-                                    <td class="text-end text-danger" x-text="formatMoney(row.expense)"></td>
                                     <td class="text-end fw-semibold" x-text="formatMoney(row.total)"></td>
                                     <td class="text-end pe-3" x-text="row.transaction_count"></td>
                                 </tr>
@@ -1068,8 +1050,6 @@
                             <tr class="fw-semibold">
                                 <td class="ps-3">Total</td>
                                 <td></td>
-                                <td class="text-end text-success" x-text="formatMoney(totalOf('income'))"></td>
-                                <td class="text-end text-danger" x-text="formatMoney(totalOf('expense'))"></td>
                                 <td class="text-end" x-text="formatMoney(totalOf('total'))"></td>
                                 <td class="text-end pe-3" x-text="totalOf('transaction_count')"></td>
                             </tr>
