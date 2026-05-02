@@ -124,97 +124,6 @@
 </div>
 
 {{-- ============================================================== --}}
-{{-- CASH MATCH (Reconcile actual cash on hand with system balance) --}}
-{{-- ============================================================== --}}
-<div x-show="widgets.cash_match" x-transition>
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0"><i data-feather="check-circle" class="icon-xs me-1"></i> Match Cash on Hand</h4>
-                <span class="badge bg-light text-muted">Creates an adjustment transaction</span>
-            </div>
-            <div class="card-body">
-                @if(session('info'))
-                    <div class="alert alert-info py-2 mb-3">{{ session('info') }}</div>
-                @endif
-                @if(empty($walletStats))
-                    <p class="text-muted mb-0">Add at least one wallet/account to use cash matching. <a href="{{ route('wallets.create') }}">Add wallet</a></p>
-                @else
-                <form method="POST" action="{{ route('dashboard.cash-match') }}"
-                      x-data="{
-                          walletId: '{{ $walletStats[0]['id'] }}',
-                          actual: '',
-                          wallets: @js(array_map(fn($w) => ['id' => $w['id'], 'name' => $w['name'], 'balance' => $w['balance']], $walletStats)),
-                          get current() {
-                              var w = this.wallets.find(x => String(x.id) === String(this.walletId));
-                              return w ? w.balance : 0;
-                          },
-                          get diff() {
-                              var actual = parseFloat(this.actual);
-                              if (isNaN(actual)) return null;
-                              return Math.round((actual - this.current) * 100) / 100;
-                          }
-                      }">
-                    @csrf
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label">Wallet / Account</label>
-                            <select name="wallet_id" class="form-select" x-model="walletId" required>
-                                @foreach($walletStats as $w)
-                                    <option value="{{ $w['id'] }}">{{ $w['name'] }}</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">
-                                System balance: <strong x-text="current.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong> {{ $currencyCode }}
-                            </small>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Actual Cash on Hand</label>
-                            <input type="number" name="actual_cash" class="form-control" step="0.01" min="0" x-model="actual" placeholder="0.00" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Note (optional)</label>
-                            <input type="text" name="note" class="form-control" maxlength="500" placeholder="Reason for adjustment">
-                        </div>
-                        <div class="col-md-2 d-grid">
-                            <button type="submit" class="btn btn-primary" :disabled="diff === null || Math.abs(diff) < 0.01">
-                                <i data-feather="check" class="icon-xs me-1"></i> Settle
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mt-3 font-size-13" x-show="diff !== null" x-cloak>
-                        <template x-if="Math.abs(diff) < 0.01">
-                            <span class="text-success"><i class="mdi mdi-check-circle"></i> Already balanced — no transaction will be created.</span>
-                        </template>
-                        <template x-if="diff > 0.005">
-                            <span>
-                                Will create an
-                                <span class="badge bg-success-subtle text-success">income</span>
-                                adjustment of
-                                <strong x-text="diff.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
-                                {{ $currencyCode }} (you have more cash than the system shows).
-                            </span>
-                        </template>
-                        <template x-if="diff < -0.005">
-                            <span>
-                                Will create an
-                                <span class="badge bg-danger-subtle text-danger">expense</span>
-                                adjustment of
-                                <strong x-text="Math.abs(diff).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
-                                {{ $currencyCode }} (you have less cash than the system shows).
-                            </span>
-                        </template>
-                    </div>
-                </form>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-</div>
-
-{{-- ============================================================== --}}
 {{-- KEY METRICS ROW --}}
 {{-- ============================================================== --}}
 <div x-show="widgets.monthly" x-transition>
@@ -954,37 +863,6 @@
 </div>
 
 {{-- ============================================================== --}}
-{{-- ALL-TIME SUMMARY --}}
-{{-- ============================================================== --}}
-<div x-show="widgets.alltime" x-transition>
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0"><i data-feather="globe" class="icon-xs me-1"></i> All-Time Summary</h4>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <h5 class="text-success mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['income'], $currencyCode) }}</h5>
-                        <p class="text-muted mb-0">Total Income</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h5 class="text-danger mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['expense'], $currencyCode) }}</h5>
-                        <p class="text-muted mb-0">Total Expense</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h5 class="{{ $allTimeSummary['current_cash'] >= 0 ? 'text-primary' : 'text-danger' }} mb-1">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['current_cash'], $currencyCode) }}</h5>
-                        <p class="text-muted mb-0">Net Cash</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</div>
-
-{{-- ============================================================== --}}
 {{-- MONTHLY SUMMARY TABLE (sortable) --}}
 {{-- ============================================================== --}}
 <div class="row" x-show="widgets.monthly_table" x-transition>
@@ -1164,7 +1042,6 @@ function dashboardWidgets() {
     var storageKey = 'ledgerly_dashboard_widgets';
     var defaults = {
         alltime_totals: true,
-        cash_match: true,
         monthly: true,
         ytd_stats: true,
         ratio_chart: true,
@@ -1175,7 +1052,6 @@ function dashboardWidgets() {
         comparison: true,
         insights: true,
         quick_actions: true,
-        alltime: true,
         monthly_table: true,
         accounts_table: true,
         breakdown_pie: true
@@ -1184,7 +1060,6 @@ function dashboardWidgets() {
         widgets: Object.assign({}, defaults),
         widgetList: [
             { key: 'alltime_totals',   label: 'All-Time Totals' },
-            { key: 'cash_match',       label: 'Cash Match (Reconcile)' },
             { key: 'monthly',          label: 'Key Metrics' },
             { key: 'ytd_stats',        label: 'YTD & Averages' },
             { key: 'ratio_chart',      label: 'Trend Charts' },
@@ -1195,7 +1070,6 @@ function dashboardWidgets() {
             { key: 'comparison',       label: 'Month vs Month Comparison' },
             { key: 'insights',         label: 'Financial Insights' },
             { key: 'quick_actions',    label: 'Quick Actions' },
-            { key: 'alltime',          label: 'All-Time Summary' },
             { key: 'monthly_table',    label: 'Monthly Summary Table' },
             { key: 'accounts_table',   label: 'Accounts (Wallets) Table' },
             { key: 'breakdown_pie',    label: 'Category & Source Charts' }

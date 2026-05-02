@@ -75,8 +75,8 @@ Route::middleware(['auth', 'account'])->group(function () {
 Route::middleware(['auth', 'account', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     Route::post('/accounts/switch', [\App\Http\Controllers\Web\AccountController::class, 'switch'])->name('accounts.switch');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::post('/dashboard/cash-match', [DashboardController::class, 'cashMatch'])->name('dashboard.cash-match');
-    
+
+    Route::post('/transactions/cash-match', [TransactionController::class, 'cashMatch'])->name('transactions.cash-match');
     Route::resource('transactions', TransactionController::class);
     Route::get('/transactions/{transaction}/duplicate', [TransactionController::class, 'duplicate'])->name('transactions.duplicate');
     Route::post('/transactions/bulk-action', [TransactionController::class, 'bulkAction'])->name('transactions.bulk');

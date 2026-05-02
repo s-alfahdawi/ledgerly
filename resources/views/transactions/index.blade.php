@@ -29,6 +29,95 @@
     </div>
 </div>
 
+{{-- ============================================================== --}}
+{{-- CASH MATCH (Reconcile actual cash on hand with system balance) --}}
+{{-- ============================================================== --}}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="check-circle" class="icon-xs me-1"></i> Match Cash on Hand</h4>
+                <span class="badge bg-light text-muted">Creates an adjustment transaction</span>
+            </div>
+            <div class="card-body">
+                @if(session('info'))
+                    <div class="alert alert-info py-2 mb-3">{{ session('info') }}</div>
+                @endif
+                @if(empty($walletStats))
+                    <p class="text-muted mb-0">Add at least one wallet/account to use cash matching. <a href="{{ route('wallets.create') }}">Add wallet</a></p>
+                @else
+                <form method="POST" action="{{ route('transactions.cash-match') }}"
+                      x-data="{
+                          walletId: '{{ $walletStats[0]['id'] }}',
+                          actual: '',
+                          wallets: @js(array_map(fn($w) => ['id' => $w['id'], 'name' => $w['name'], 'balance' => $w['balance']], $walletStats)),
+                          get current() {
+                              var w = this.wallets.find(x => String(x.id) === String(this.walletId));
+                              return w ? w.balance : 0;
+                          },
+                          get diff() {
+                              var actual = parseFloat(this.actual);
+                              if (isNaN(actual)) return null;
+                              return Math.round((actual - this.current) * 100) / 100;
+                          }
+                      }">
+                    @csrf
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Wallet / Account</label>
+                            <select name="wallet_id" class="form-select" x-model="walletId" required>
+                                @foreach($walletStats as $w)
+                                    <option value="{{ $w['id'] }}">{{ $w['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">
+                                System balance: <strong x-text="current.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong> {{ $currencyCode }}
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Actual Cash on Hand</label>
+                            <input type="number" name="actual_cash" class="form-control" step="0.01" min="0" x-model="actual" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Note (optional)</label>
+                            <input type="text" name="note" class="form-control" maxlength="500" placeholder="Reason for adjustment">
+                        </div>
+                        <div class="col-md-2 d-grid">
+                            <button type="submit" class="btn btn-primary" :disabled="diff === null || Math.abs(diff) < 0.01">
+                                <i data-feather="check" class="icon-xs me-1"></i> Settle
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-3 font-size-13" x-show="diff !== null" x-cloak>
+                        <template x-if="Math.abs(diff) < 0.01">
+                            <span class="text-success"><i class="mdi mdi-check-circle"></i> Already balanced — no transaction will be created.</span>
+                        </template>
+                        <template x-if="diff > 0.005">
+                            <span>
+                                Will create an
+                                <span class="badge bg-success-subtle text-success">income</span>
+                                adjustment of
+                                <strong x-text="diff.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
+                                {{ $currencyCode }} (you have more cash than the system shows).
+                            </span>
+                        </template>
+                        <template x-if="diff < -0.005">
+                            <span>
+                                Will create an
+                                <span class="badge bg-danger-subtle text-danger">expense</span>
+                                adjustment of
+                                <strong x-text="Math.abs(diff).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
+                                {{ $currencyCode }} (you have less cash than the system shows).
+                            </span>
+                        </template>
+                    </div>
+                </form>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-3">
     <div class="col-12">
         <div class="card">

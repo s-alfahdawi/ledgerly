@@ -11,8 +11,11 @@ use App\Models\Tag;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Services\AccountContext;
+use App\Services\ReportService;
 use App\Services\TransactionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,13 +23,15 @@ class TransactionController extends Controller
 {
     public function __construct(
         private TransactionService $transactionService,
-        private AccountContext $accountContext
+        private AccountContext $accountContext,
+        private ReportService $reportService
     ) {
     }
 
     public function index(Request $request)
     {
         $accountId = $this->requireAccountId();
+        $walletStats = $this->reportService->getWalletStats($accountId);
 
         $query = Transaction::forAccount($accountId)
             ->with(['wallet', 'category', 'creator', 'tags']);
@@ -76,7 +81,91 @@ class TransactionController extends Controller
 
         $transactions = $query->paginate(20)->withQueryString();
 
-        return view('transactions.index', compact('transactions'));
+        return view('transactions.index', compact('transactions', 'walletStats'));
+    }
+
+    /**
+     * Reconcile a wallet's balance to a user-supplied "actual cash" amount.
+     *
+     * Creates an income or expense adjustment transaction equal to the
+     * difference between actual and current system balance:
+     *   - actual > system  → income leg (positive correction)
+     *   - actual < system  → expense leg (negative correction)
+     *   - actual == system → no-op
+     */
+    public function cashMatch(Request $request): RedirectResponse
+    {
+        $accountId = $this->requireAccountId();
+        $account = $this->accountContext->resolve();
+
+        $validated = $request->validate([
+            'wallet_id'   => ['required', 'integer'],
+            'actual_cash' => ['required', 'numeric', 'min:0'],
+            'note'        => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $wallet = Wallet::forAccount($accountId)
+            ->active()
+            ->where('id', $validated['wallet_id'])
+            ->first();
+
+        if (!$wallet) {
+            return back()->with('error', 'Selected wallet was not found.');
+        }
+
+        $totals = Transaction::forAccount($accountId)
+            ->where('wallet_id', $wallet->id)
+            ->whereIn('type', ['income', 'expense'])
+            ->selectRaw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income")
+            ->selectRaw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense")
+            ->first();
+
+        $income  = $totals ? (float) $totals->total_income  : 0.0;
+        $expense = $totals ? (float) $totals->total_expense : 0.0;
+        $current = (float) $wallet->opening_balance + $income - $expense;
+        $actual  = (float) $validated['actual_cash'];
+        $diff    = round($actual - $current, 2);
+
+        if (abs($diff) < 0.01) {
+            return back()->with('info', "{$wallet->name} is already balanced. No adjustment created.");
+        }
+
+        $type   = $diff > 0 ? 'income' : 'expense';
+        $amount = abs($diff);
+        $defaultNote = \sprintf(
+            'Cash adjustment — set %s balance to %s (was %s)',
+            $wallet->name,
+            number_format($actual, 2),
+            number_format($current, 2)
+        );
+
+        $userId = $request->user()->id;
+        $tz = $account?->timezone ?? 'UTC';
+
+        DB::transaction(function () use ($accountId, $wallet, $type, $amount, $validated, $defaultNote, $userId, $tz) {
+            Transaction::create([
+                'account_id'  => $accountId,
+                'wallet_id'   => $wallet->id,
+                'category_id' => null,
+                'type'        => $type,
+                'amount'      => $amount,
+                'occurred_at' => now($tz),
+                'note'        => $validated['note'] ?? $defaultNote,
+                'created_by'  => $userId,
+            ]);
+        });
+
+        Cache::forget("dashboard:{$accountId}:" . now($tz)->format('Y-m-d-H'));
+
+        return back()->with(
+            'success',
+            \sprintf(
+                '%s adjustment of %s created on %s.',
+                ucfirst($type),
+                number_format($amount, 2),
+                $wallet->name
+            )
+        );
     }
 
     public function create()
