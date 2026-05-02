@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Budget;
+use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Support\ReportPeriod;
@@ -114,6 +115,12 @@ class ReportService
 
     /**
      * Get all-time income, expense, and current cash totals.
+     *
+     * "current_cash" is the sum of every wallet's real-world balance:
+     *   Σ(wallet.opening_balance) + Σ(income) − Σ(expense)
+     *
+     * This matches the per-wallet "system balance" shown in the cash-match
+     * form, so the dashboard total equals the sum of all wallet balances.
      */
     public function getAllTimeSummary(int $accountId): array
     {
@@ -125,10 +132,14 @@ class ReportService
             ->byType('expense')
             ->sum('amount');
 
+        $openingBalance = Wallet::forAccount($accountId)
+            ->active()
+            ->sum('opening_balance');
+
         return [
-            'income' => (float) $income,
-            'expense' => (float) $expense,
-            'current_cash' => (float) $income - (float) $expense,
+            'income'       => (float) $income,
+            'expense'      => (float) $expense,
+            'current_cash' => (float) $openingBalance + (float) $income - (float) $expense,
         ];
     }
 
@@ -252,6 +263,51 @@ class ReportService
                 'income'            => $income,
                 'expense'           => $expense,
                 'balance'           => $opening + $income - $expense,
+                'transaction_count' => $row ? (int) $row->transaction_count : 0,
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Per-category stats: type, income total, expense total, total amount, transaction count.
+     * Used by the dashboard "Categories" sortable table.
+     */
+    public function getCategoryStats(int $accountId): array
+    {
+        $categories = Category::forAccount($accountId)->active()->get();
+
+        if ($categories->isEmpty()) {
+            return [];
+        }
+
+        $categoryIds = $categories->pluck('id');
+
+        $totals = Transaction::forAccount($accountId)
+            ->whereIn('category_id', $categoryIds)
+            ->whereIn('type', ['income', 'expense'])
+            ->select(
+                'category_id',
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense"),
+                DB::raw("COUNT(*) as transaction_count")
+            )
+            ->groupBy('category_id')
+            ->get()
+            ->keyBy('category_id');
+
+        return $categories->map(function ($category) use ($totals) {
+            $row     = $totals->get($category->id);
+            $income  = $row ? (float) $row->total_income  : 0.0;
+            $expense = $row ? (float) $row->total_expense : 0.0;
+
+            return [
+                'id'                => $category->id,
+                'name'              => $category->name,
+                'type'              => $category->type,
+                'color'             => $category->color ?? '#405189',
+                'income'            => $income,
+                'expense'           => $expense,
+                'total'             => $income + $expense,
                 'transaction_count' => $row ? (int) $row->transaction_count : 0,
             ];
         })->values()->toArray();

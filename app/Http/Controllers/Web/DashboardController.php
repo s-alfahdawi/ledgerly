@@ -152,14 +152,17 @@ class DashboardController extends Controller
             );
         });
 
-        // Wallet stats are queried fresh (outside the dashboard cache) so newly-added
-        // wallets show up immediately without waiting for the 5-minute cache to expire.
-        $walletStats = $this->reportService->getWalletStats($accountId);
+        // Wallet & category stats are queried fresh (outside the dashboard cache) so
+        // newly-added wallets/categories show up immediately without waiting for the
+        // 5-minute cache to expire.
+        $walletStats   = $this->reportService->getWalletStats($accountId);
+        $categoryStats = $this->reportService->getCategoryStats($accountId);
 
         return view('dashboard.index', array_merge($data, [
-            'account' => $account,
-            'monthlyData' => $data['last12Months'],
-            'walletStats' => $walletStats,
+            'account'       => $account,
+            'monthlyData'   => $data['last12Months'],
+            'walletStats'   => $walletStats,
+            'categoryStats' => $categoryStats,
         ]));
     }
 }

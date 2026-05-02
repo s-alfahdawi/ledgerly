@@ -43,18 +43,11 @@
                 @if(session('info'))
                     <div class="alert alert-info py-2 mb-3">{{ session('info') }}</div>
                 @endif
-                @if(empty($walletStats))
-                    <p class="text-muted mb-0">Add at least one wallet/account to use cash matching. <a href="{{ route('wallets.create') }}">Add wallet</a></p>
-                @else
+                @php $currentCash = (float) ($currentCashTotal ?? 0); @endphp
                 <form method="POST" action="{{ route('transactions.cash-match') }}"
                       x-data="{
-                          walletId: '{{ $walletStats[0]['id'] }}',
                           actual: '',
-                          wallets: @js(array_map(fn($w) => ['id' => $w['id'], 'name' => $w['name'], 'balance' => $w['balance']], $walletStats)),
-                          get current() {
-                              var w = this.wallets.find(x => String(x.id) === String(this.walletId));
-                              return w ? w.balance : 0;
-                          },
+                          current: {{ $currentCash }},
                           get diff() {
                               var actual = parseFloat(this.actual);
                               if (isNaN(actual)) return null;
@@ -64,15 +57,10 @@
                     @csrf
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
-                            <label class="form-label">Wallet / Account</label>
-                            <select name="wallet_id" class="form-select" x-model="walletId" required>
-                                @foreach($walletStats as $w)
-                                    <option value="{{ $w['id'] }}">{{ $w['name'] }}</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">
-                                System balance: <strong x-text="current.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong> {{ $currencyCode }}
-                            </small>
+                            <label class="form-label">Current Cash (system)</label>
+                            <input type="text" class="form-control" readonly
+                                   value="{{ \App\Helpers\CurrencyHelper::format($currentCash, $currencyCode) }}">
+                            <small class="text-muted">Sum of all wallets: opening + income − expense</small>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Actual Cash on Hand</label>
@@ -112,7 +100,6 @@
                         </template>
                     </div>
                 </form>
-                @endif
             </div>
         </div>
     </div>
