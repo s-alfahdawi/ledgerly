@@ -62,6 +62,159 @@
 </div>
 
 {{-- ============================================================== --}}
+{{-- ALL-TIME TOTALS (Income / Expense / Current Cash) --}}
+{{-- ============================================================== --}}
+<div x-show="widgets.alltime_totals" x-transition>
+<div class="row">
+    <div class="col-xl-4 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">All-Time Income</p>
+                        <h4 class="mb-1 text-success">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['income'], $currencyCode) }}</h4>
+                        <p class="mb-0 font-size-12 text-muted">{{ number_format($txCounts['income_count']) }} transactions</p>
+                    </div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-success-subtle text-success rounded">
+                            <i data-feather="trending-up" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">All-Time Expense</p>
+                        <h4 class="mb-1 text-danger">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['expense'], $currencyCode) }}</h4>
+                        <p class="mb-0 font-size-12 text-muted">{{ number_format($txCounts['expense_count']) }} transactions</p>
+                    </div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-danger-subtle text-danger rounded">
+                            <i data-feather="trending-down" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <p class="text-muted fw-semibold font-size-13 mb-1">Current Cash</p>
+                        <h4 class="mb-1 {{ $allTimeSummary['current_cash'] >= 0 ? 'text-primary' : 'text-danger' }}">{{ \App\Helpers\CurrencyHelper::format($allTimeSummary['current_cash'], $currencyCode) }}</h4>
+                        <p class="mb-0 font-size-12 text-muted">Income minus expense, all time</p>
+                    </div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-primary-subtle text-primary rounded">
+                            <i data-feather="dollar-sign" class="font-size-20"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- CASH MATCH (Reconcile actual cash on hand with system balance) --}}
+{{-- ============================================================== --}}
+<div x-show="widgets.cash_match" x-transition>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="check-circle" class="icon-xs me-1"></i> Match Cash on Hand</h4>
+                <span class="badge bg-light text-muted">Creates an adjustment transaction</span>
+            </div>
+            <div class="card-body">
+                @if(session('info'))
+                    <div class="alert alert-info py-2 mb-3">{{ session('info') }}</div>
+                @endif
+                @if(empty($walletStats))
+                    <p class="text-muted mb-0">Add at least one wallet/account to use cash matching. <a href="{{ route('wallets.create') }}">Add wallet</a></p>
+                @else
+                <form method="POST" action="{{ route('dashboard.cash-match') }}"
+                      x-data="{
+                          walletId: '{{ $walletStats[0]['id'] }}',
+                          actual: '',
+                          wallets: @js(array_map(fn($w) => ['id' => $w['id'], 'name' => $w['name'], 'balance' => $w['balance']], $walletStats)),
+                          get current() {
+                              var w = this.wallets.find(x => String(x.id) === String(this.walletId));
+                              return w ? w.balance : 0;
+                          },
+                          get diff() {
+                              var actual = parseFloat(this.actual);
+                              if (isNaN(actual)) return null;
+                              return Math.round((actual - this.current) * 100) / 100;
+                          }
+                      }">
+                    @csrf
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Wallet / Account</label>
+                            <select name="wallet_id" class="form-select" x-model="walletId" required>
+                                @foreach($walletStats as $w)
+                                    <option value="{{ $w['id'] }}">{{ $w['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">
+                                System balance: <strong x-text="current.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong> {{ $currencyCode }}
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Actual Cash on Hand</label>
+                            <input type="number" name="actual_cash" class="form-control" step="0.01" min="0" x-model="actual" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Note (optional)</label>
+                            <input type="text" name="note" class="form-control" maxlength="500" placeholder="Reason for adjustment">
+                        </div>
+                        <div class="col-md-2 d-grid">
+                            <button type="submit" class="btn btn-primary" :disabled="diff === null || Math.abs(diff) < 0.01">
+                                <i data-feather="check" class="icon-xs me-1"></i> Settle
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-3 font-size-13" x-show="diff !== null" x-cloak>
+                        <template x-if="Math.abs(diff) < 0.01">
+                            <span class="text-success"><i class="mdi mdi-check-circle"></i> Already balanced — no transaction will be created.</span>
+                        </template>
+                        <template x-if="diff > 0.005">
+                            <span>
+                                Will create an
+                                <span class="badge bg-success-subtle text-success">income</span>
+                                adjustment of
+                                <strong x-text="diff.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
+                                {{ $currencyCode }} (you have more cash than the system shows).
+                            </span>
+                        </template>
+                        <template x-if="diff < -0.005">
+                            <span>
+                                Will create an
+                                <span class="badge bg-danger-subtle text-danger">expense</span>
+                                adjustment of
+                                <strong x-text="Math.abs(diff).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></strong>
+                                {{ $currencyCode }} (you have less cash than the system shows).
+                            </span>
+                        </template>
+                    </div>
+                </form>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{{-- ============================================================== --}}
 {{-- KEY METRICS ROW --}}
 {{-- ============================================================== --}}
 <div x-show="widgets.monthly" x-transition>
@@ -832,7 +985,7 @@
 </div>
 
 {{-- ============================================================== --}}
-{{-- MONTHLY SUMMARY TABLE --}}
+{{-- MONTHLY SUMMARY TABLE (sortable) --}}
 {{-- ============================================================== --}}
 <div class="row" x-show="widgets.monthly_table" x-transition>
     <div class="col-12">
@@ -842,30 +995,132 @@
                 <span class="badge bg-light text-muted">Last 12 months</span>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive"
+                     x-data="sortableTable({
+                        rows: @js(array_values(array_map(fn($r) => [
+                            'month_label' => $r['month'],
+                            'month_sort'  => $r['month'],
+                            'income'      => (float) $r['income'],
+                            'expense'     => (float) $r['expense'],
+                            'net'         => (float) $r['net'],
+                        ], array_reverse($last12Months)))),
+                        defaultSort: 'month_sort',
+                        defaultDir: 'desc'
+                     })">
                     <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3">Month</th>
-                                <th class="text-end">Income</th>
-                                <th class="text-end">Expense</th>
-                                <th class="text-end pe-3">Net</th>
+                                <th class="ps-3" role="button" @click="sortBy('month_sort')">
+                                    Month <span class="text-muted small" x-text="indicator('month_sort')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('income')">
+                                    Income <span class="text-muted small" x-text="indicator('income')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('expense')">
+                                    Expense <span class="text-muted small" x-text="indicator('expense')"></span>
+                                </th>
+                                <th class="text-end pe-3" role="button" @click="sortBy('net')">
+                                    Net <span class="text-muted small" x-text="indicator('net')"></span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach(array_reverse($last12Months) as $row)
-                            <tr>
-                                <td class="ps-3 fw-medium">{{ $row['month'] }}</td>
-                                <td class="text-end text-success">{{ \App\Helpers\CurrencyHelper::format($row['income'], $currencyCode) }}</td>
-                                <td class="text-end text-danger">{{ \App\Helpers\CurrencyHelper::format($row['expense'], $currencyCode) }}</td>
-                                <td class="text-end pe-3 fw-semibold {{ $row['net'] >= 0 ? 'text-success' : 'text-danger' }}">
-                                    {{ $row['net'] >= 0 ? '+' : '' }}{{ \App\Helpers\CurrencyHelper::format($row['net'], $currencyCode) }}
-                                </td>
-                            </tr>
-                            @endforeach
+                            <template x-for="row in sorted" :key="row.month_sort">
+                                <tr>
+                                    <td class="ps-3 fw-medium" x-text="row.month_label"></td>
+                                    <td class="text-end text-success" x-text="formatMoney(row.income)"></td>
+                                    <td class="text-end text-danger" x-text="formatMoney(row.expense)"></td>
+                                    <td class="text-end pe-3 fw-semibold"
+                                        :class="row.net >= 0 ? 'text-success' : 'text-danger'"
+                                        x-text="(row.net >= 0 ? '+' : '') + formatMoney(row.net)"></td>
+                                </tr>
+                            </template>
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- PER-ACCOUNT (WALLET) TABLE (sortable) --}}
+{{-- ============================================================== --}}
+<div class="row" x-show="widgets.accounts_table" x-transition>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i data-feather="layers" class="icon-xs me-1"></i> Accounts (Wallets)</h4>
+                <a href="{{ route('wallets.index') }}" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body p-0">
+                @if(empty($walletStats))
+                    <div class="text-center py-4">
+                        <p class="text-muted mb-2">No wallets yet.</p>
+                        <a href="{{ route('wallets.create') }}" class="btn btn-sm btn-primary">Add wallet</a>
+                    </div>
+                @else
+                <div class="table-responsive"
+                     x-data="sortableTable({
+                        rows: @js($walletStats),
+                        defaultSort: 'balance',
+                        defaultDir: 'desc'
+                     })">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3" role="button" @click="sortBy('name')">
+                                    Account <span class="text-muted small" x-text="indicator('name')"></span>
+                                </th>
+                                <th role="button" @click="sortBy('type')">
+                                    Type <span class="text-muted small" x-text="indicator('type')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('opening_balance')">
+                                    Opening <span class="text-muted small" x-text="indicator('opening_balance')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('income')">
+                                    Income <span class="text-muted small" x-text="indicator('income')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('expense')">
+                                    Expense <span class="text-muted small" x-text="indicator('expense')"></span>
+                                </th>
+                                <th class="text-end" role="button" @click="sortBy('balance')">
+                                    Balance <span class="text-muted small" x-text="indicator('balance')"></span>
+                                </th>
+                                <th class="text-end pe-3" role="button" @click="sortBy('transaction_count')">
+                                    Txns <span class="text-muted small" x-text="indicator('transaction_count')"></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="row in sorted" :key="row.id">
+                                <tr>
+                                    <td class="ps-3 fw-medium" x-text="row.name"></td>
+                                    <td><span class="badge bg-light text-muted text-capitalize" x-text="row.type"></span></td>
+                                    <td class="text-end" x-text="formatMoney(row.opening_balance)"></td>
+                                    <td class="text-end text-success" x-text="formatMoney(row.income)"></td>
+                                    <td class="text-end text-danger" x-text="formatMoney(row.expense)"></td>
+                                    <td class="text-end fw-semibold"
+                                        :class="row.balance >= 0 ? 'text-success' : 'text-danger'"
+                                        x-text="formatMoney(row.balance)"></td>
+                                    <td class="text-end pe-3" x-text="row.transaction_count"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr class="fw-semibold">
+                                <td class="ps-3">Total</td>
+                                <td></td>
+                                <td class="text-end" x-text="formatMoney(totalOf('opening_balance'))"></td>
+                                <td class="text-end text-success" x-text="formatMoney(totalOf('income'))"></td>
+                                <td class="text-end text-danger" x-text="formatMoney(totalOf('expense'))"></td>
+                                <td class="text-end" :class="totalOf('balance') >= 0 ? 'text-success' : 'text-danger'" x-text="formatMoney(totalOf('balance'))"></td>
+                                <td class="text-end pe-3" x-text="totalOf('transaction_count')"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -908,6 +1163,8 @@
 function dashboardWidgets() {
     var storageKey = 'ledgerly_dashboard_widgets';
     var defaults = {
+        alltime_totals: true,
+        cash_match: true,
         monthly: true,
         ytd_stats: true,
         ratio_chart: true,
@@ -919,12 +1176,15 @@ function dashboardWidgets() {
         insights: true,
         quick_actions: true,
         alltime: true,
-        monthly_table: false,
+        monthly_table: true,
+        accounts_table: true,
         breakdown_pie: true
     };
     return {
         widgets: Object.assign({}, defaults),
         widgetList: [
+            { key: 'alltime_totals',   label: 'All-Time Totals' },
+            { key: 'cash_match',       label: 'Cash Match (Reconcile)' },
             { key: 'monthly',          label: 'Key Metrics' },
             { key: 'ytd_stats',        label: 'YTD & Averages' },
             { key: 'ratio_chart',      label: 'Trend Charts' },
@@ -937,6 +1197,7 @@ function dashboardWidgets() {
             { key: 'quick_actions',    label: 'Quick Actions' },
             { key: 'alltime',          label: 'All-Time Summary' },
             { key: 'monthly_table',    label: 'Monthly Summary Table' },
+            { key: 'accounts_table',   label: 'Accounts (Wallets) Table' },
             { key: 'breakdown_pie',    label: 'Category & Source Charts' }
         ],
         init: function() {
@@ -972,6 +1233,49 @@ function dashboardWidgets() {
             this.$nextTick(function() {
                 window.dispatchEvent(new Event('resize'));
             });
+        }
+    };
+}
+
+function sortableTable(config) {
+    return {
+        rows: config.rows || [],
+        sortKey: config.defaultSort || null,
+        sortDir: config.defaultDir === 'asc' ? 'asc' : 'desc',
+        get sorted() {
+            if (!this.sortKey) return this.rows;
+            var key = this.sortKey;
+            var dir = this.sortDir === 'asc' ? 1 : -1;
+            var copy = this.rows.slice();
+            copy.sort(function(a, b) {
+                var av = a[key];
+                var bv = b[key];
+                if (av === bv) return 0;
+                if (typeof av === 'number' && typeof bv === 'number') {
+                    return (av - bv) * dir;
+                }
+                return String(av).localeCompare(String(bv)) * dir;
+            });
+            return copy;
+        },
+        sortBy: function(key) {
+            if (this.sortKey === key) {
+                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortKey = key;
+                this.sortDir = 'desc';
+            }
+        },
+        indicator: function(key) {
+            if (this.sortKey !== key) return '';
+            return this.sortDir === 'asc' ? '▲' : '▼';
+        },
+        formatMoney: function(val) {
+            var num = Number(val) || 0;
+            return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' {{ $currencyCode }}';
+        },
+        totalOf: function(key) {
+            return this.rows.reduce(function(sum, r) { return sum + (Number(r[key]) || 0); }, 0);
         }
     };
 }

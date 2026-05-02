@@ -212,6 +212,52 @@ class ReportService
     }
 
     /**
+     * Per-wallet (account) stats: opening balance, income, expense, current balance, transaction count.
+     * Used by the dashboard "Accounts" sortable table.
+     */
+    public function getWalletStats(int $accountId): array
+    {
+        $wallets = Wallet::forAccount($accountId)->active()->get();
+
+        if ($wallets->isEmpty()) {
+            return [];
+        }
+
+        $walletIds = $wallets->pluck('id');
+
+        $totals = Transaction::forAccount($accountId)
+            ->whereIn('wallet_id', $walletIds)
+            ->whereIn('type', ['income', 'expense'])
+            ->select(
+                'wallet_id',
+                DB::raw("SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income"),
+                DB::raw("SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense"),
+                DB::raw("COUNT(*) as transaction_count")
+            )
+            ->groupBy('wallet_id')
+            ->get()
+            ->keyBy('wallet_id');
+
+        return $wallets->map(function ($wallet) use ($totals) {
+            $row     = $totals->get($wallet->id);
+            $income  = $row ? (float) $row->total_income  : 0.0;
+            $expense = $row ? (float) $row->total_expense : 0.0;
+            $opening = (float) $wallet->opening_balance;
+
+            return [
+                'id'                => $wallet->id,
+                'name'              => $wallet->name,
+                'type'              => $wallet->type,
+                'opening_balance'   => $opening,
+                'income'            => $income,
+                'expense'           => $expense,
+                'balance'           => $opening + $income - $expense,
+                'transaction_count' => $row ? (int) $row->transaction_count : 0,
+            ];
+        })->values()->toArray();
+    }
+
+    /**
      * Get monthly income/expense/net for the last N months in a single query.
      * Replaces calling getMonthlySummary() in a loop (N*2 queries -> 1 query).
      */
